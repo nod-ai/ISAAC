@@ -1,3 +1,6 @@
 [submodule "external/llvm-project"]
 	path = external/llvm-project
 	url = https://github.com/llvm/llvm-project.git
+[submodule "external/googletest"]
+	path = external/googletest
+	url = https://github.com/google/googletest.git
