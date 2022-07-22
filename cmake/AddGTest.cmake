@@ -1,0 +1,6 @@
+macro(add_unit_test TESTNAME LIBRARIES)
+    add_executable(${TESTNAME} "${TESTNAME}.cpp")
+    target_link_libraries(${TESTNAME} gtest_main ${LIBRARIES})
+    gtest_discover_tests(${TESTNAME})
+    set_target_properties(${TESTNAME} PROPERTIES FOLDER tests)
+endmacro()
