@@ -83,6 +83,6 @@ class PTXProgram {
 public:
   PTXProgram(std::string_view name_) : name(name_) {}
   void push_back(PTXKernel::Ptr kernel) {
-    kernels.push_back(kernel);
+    kernels.push_back(std::move(kernel));
   }
 };
