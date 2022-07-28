@@ -2,8 +2,7 @@
 
 #include <vector>
 #include <string_view>
-#include "Value.h"
-#include "CFG.h"
+#include "ir/Value.h"
 
 /**
  * @class Operand
@@ -54,6 +53,43 @@ public:
   PTXDirective() = delete;
 };
 
+/**
+ * @class BasicBlock
+ * @brief This class represents a maximal length sequence
+ *        of straightline code.
+ *
+ */
+class BasicBlock {
+  std::vector<PTXInstruction> instructions;
+public:
+  using Ptr = std::unique_ptr<BasicBlock>;
+  BasicBlock() {}
+  void push_back(PTXInstruction &instr) {
+    instructions.push_back(instr);
+  }
+  const std::vector<PTXInstruction> &getInstructions() const {
+    return instructions;
+  }
+};
+
+
+/**
+ * @class Graph
+ * @brief This class represents the control flow graph.
+ *
+ */
+class ControlFlowGraph {
+  std::vector<BasicBlock> blocks;
+public:
+  ControlFlowGraph() {}
+  void push_back(BasicBlock &block) {
+    blocks.push_back(block);
+  }
+  const std::vector<BasicBlock> &getBlocks() const {
+    return blocks;
+  }
+};
+
 
 /**
  * @class PTXKernel
@@ -64,10 +100,10 @@ public:
 class PTXKernel {
   std::string_view name;
   std::vector<Value> arguments;
-  ControlFlowGraph::Ptr body;
+  ControlFlowGraph body;
 public:
-  using Ptr = std::unique_ptr<PTXKernel>;
-
+  PTXKernel(std::string_view name_, std::vector<Value> &arguments_,
+            ControlFlowGraph &body_);
 };
 
 
@@ -78,11 +114,15 @@ public:
  *
  */
 class PTXProgram {
-  std::vector<PTXKernel::Ptr> kernels;
+  std::vector<PTXKernel> kernels;
   std::string_view name;
 public:
   PTXProgram(std::string_view name_) : name(name_) {}
-  void push_back(PTXKernel::Ptr kernel) {
-    kernels.push_back(std::move(kernel));
+  void push_back(PTXKernel &kernel) {
+    kernels.push_back(kernel);
   }
+  const std::vector<PTXKernel> &getKernels() const {
+    return kernels;
+  }
+  std::string_view getName() const { return name; }
 };

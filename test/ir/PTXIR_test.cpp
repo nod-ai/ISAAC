@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "PTXIR.h"
+#include "ir/PTXIR.h"
 
 TEST(PTXIRTest, PTXOperand) {
   EXPECT_NO_THROW(

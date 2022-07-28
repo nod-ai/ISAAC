@@ -1,2 +1,8 @@
-add_library(PTXIR INTERFACE)
-target_include_directories(PTXIR INTERFACE ${CMAKE_CURRENT_LIST_DIR})
+set(SRC
+  PTXIR.cpp
+)
+add_library(PTXIR ${SRC})
+target_include_directories(PTXIR
+  PUBLIC
+  ${COMPILER_SOURCE_DIR}/include
+)
