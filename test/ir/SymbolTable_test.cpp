@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "SymbolTable.h"
+#include "ir/SymbolTable.h"
 
 TEST(SymbolTableTest, AddEntry) {
   auto symTable = std::make_unique<SymbolTable>();

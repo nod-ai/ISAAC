@@ -8,20 +8,29 @@ import subprocess
 import os
 
 parser = argparse.ArgumentParser(description='Compile .cu file to ptx')
-parser.add_argument('-i', type=str, help='the input .cu file', required=True)
-parser.add_argument('-c', type=str, help='path to clang', required=True)
-parser.add_argument('-o', type=str, help='name of the output .ptx file', default='output.ptx')
-parser.add_argument('-a', type=str, help='cuda gpu arch to target', default='sm_80')
+parser.add_argument('-input', type=str, help='the input .cu file', required=True)
+parser.add_argument('-clang-path', type=str, help='path to clang', required=True)
+parser.add_argument('-output', type=str, help='name of the output .ptx file', default='output.ptx')
+parser.add_argument('-emit-ll', default=False, action='store_true', help='whether to output a ll file or not')
+parser.add_argument('-arch', type=str, help='cuda gpu arch to target', default='sm_80')
 args = parser.parse_args()
 
-if args.o[-4:] != '.ptx':
-    args.o += '.ptx'
+if args.output[-4:] != '.ptx':
+    args.output += '.ptx'
 
-cmd = [f'{args.c}', f'{args.i}', '-S', f'--cuda-gpu-arch={args.a}']
+cmd = [f'{args.clang_path}', f'{args.input}', '-S', f'--cuda-gpu-arch={args.arch}']
 print(' '.join(cmd))
-subprocess.run(cmd, check=True)
+subprocess.run(cmd)
 
 # Remove host asm and rename gpu asm to ptx
-prefix = os.path.basename(args.i[0:-3])
+prefix = os.path.basename(args.input[0:-3])
 subprocess.run(['rm', f'{prefix}.s'])
-subprocess.run(['mv', f'{prefix}-cuda-nvptx64-nvidia-cuda-{args.a}.s', f'{args.o}'])
+subprocess.run(['mv', f'{prefix}-cuda-nvptx64-nvidia-cuda-{args.arch}.s', f'{args.output}'])
+
+# Check if ll file generation was requested
+if args.emit_ll:
+    cmd += ['-emit-llvm']
+    print(' '.join(cmd))
+    subprocess.run(cmd)
+    subprocess.run(['rm', f'{prefix}.ll'])
+    subprocess.run(['mv', f'{prefix}-cuda-nvptx64-nvidia-cuda-{args.arch}.ll', f'{prefix}.ll'])
