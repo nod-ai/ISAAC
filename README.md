@@ -1,4 +1,4 @@
-# ISAAC - ISA AutoTuned Compiler
+# ISAAC - ISA Auto-tuned Compiler
 ISAAC is an ISA level auto-tuning compiler. 
 
 # Getting started
