@@ -1,5 +1,5 @@
-# SHARK-Compiler
-SHARK LLVM Compiler
+# ISAAC - ISA AutoTuned Compiler
+ISAAC is a ISA level auto-tuning compiler. 
 
 # Getting started
 
