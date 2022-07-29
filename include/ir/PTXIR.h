@@ -1,8 +1,10 @@
 #pragma once
 
 #include <vector>
+#include <optional>
 #include <string_view>
 #include "ir/Value.h"
+#include "ir/SymbolTable.h"
 
 /**
  * @class Operand
@@ -11,19 +13,14 @@
  */
 class PTXOperand {
 public:
-  enum Kind {
-    Register,
-    Immediate,
-    Expression,
-  };
   PTXOperand() = delete;
-  PTXOperand(std::string_view name_, Kind kind_) :
-    name(name_), kind(kind_) {}
+  PTXOperand(std::string_view name_) :
+    name(name_) {}
   ~PTXOperand() {}
+  std::string_view getName() const { return name; }
 
 private:
   std::string_view name;
-  Kind kind;
 };
 
 /**
@@ -39,6 +36,17 @@ public:
   PTXInstruction(std::string_view name_, const std::vector<PTXOperand> &operands_) :
     name(name_), operands(operands_) {}
   ~PTXInstruction() {}
+  std::string_view getName() const { return name; }
+  std::optional<PTXOperand> getOperand(size_t idx) {
+    if (idx < operands.size()) return operands[idx];
+    return {};
+  }
+  std::vector<PTXOperand> & getOperands() {
+    return operands;
+  }
+  std::string_view getOperandType() {
+    return name.substr(name.size() - 3);
+  }
 };
 
 
@@ -59,13 +67,23 @@ public:
  *        of straightline code.
  *
  */
-class BasicBlock {
+class PTXBasicBlock {
   std::vector<PTXInstruction> instructions;
+  PTXSymbolTable *symbolTable;
+  void computeDefUseChain(PTXInstruction &inst);
 public:
-  using Ptr = std::unique_ptr<BasicBlock>;
-  BasicBlock() {}
+  using Ptr = std::unique_ptr<PTXBasicBlock>;
+  PTXBasicBlock() {}
+  void processInstruction(PTXInstruction &inst);
   void push_back(PTXInstruction &instr) {
     instructions.push_back(instr);
+  }
+  void setSymbolTable(PTXSymbolTable *symbolTable_) {
+    symbolTable = symbolTable_;
+  }
+  void computeDefUseChain();
+  size_t numInstructions() const {
+    return instructions.size();
   }
   const std::vector<PTXInstruction> &getInstructions() const {
     return instructions;
@@ -78,14 +96,17 @@ public:
  * @brief This class represents the control flow graph.
  *
  */
-class ControlFlowGraph {
-  std::vector<BasicBlock> blocks;
+class PTXControlFlowGraph {
+  std::vector<PTXBasicBlock> blocks;
+  PTXSymbolTable symbolTable;
 public:
-  ControlFlowGraph() {}
-  void push_back(BasicBlock &block) {
+  PTXControlFlowGraph() {}
+  void push_back(PTXBasicBlock &block) {
+    block.setSymbolTable(&symbolTable);
     blocks.push_back(block);
   }
-  const std::vector<BasicBlock> &getBlocks() const {
+  void computeDefUseChain();
+  const std::vector<PTXBasicBlock> &getBlocks() const {
     return blocks;
   }
 };
@@ -99,11 +120,13 @@ public:
  */
 class PTXKernel {
   std::string_view name;
-  std::vector<Value> arguments;
-  ControlFlowGraph body;
+  std::vector<PTXValue> arguments;
+  PTXControlFlowGraph body;
 public:
-  PTXKernel(std::string_view name_, std::vector<Value> &arguments_,
-            ControlFlowGraph &body_);
+  PTXKernel(std::string_view name_, std::vector<PTXValue> &arguments_,
+            PTXControlFlowGraph &body_);
+  std::string_view getName() const { return name; }
+  PTXControlFlowGraph &getBody() { return body; }
 };
 
 

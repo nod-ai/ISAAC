@@ -2,18 +2,18 @@
 #include "ir/SymbolTable.h"
 
 TEST(SymbolTableTest, AddEntry) {
-  auto symTable = std::make_unique<SymbolTable>();
+  auto symTable = std::make_unique<PTXSymbolTable>();
   EXPECT_EQ(symTable->size(), 0);
-  Type type("i8");
-  auto v = Value("a", type);
+  PTXType type("i8");
+  auto v = PTXValue("a", type);
   symTable->insert("a", v);
   EXPECT_EQ(symTable->size(), 1);
 }
 
 TEST(SymbolTableTest, LookupEntry) {
-  auto symTable = std::make_unique<SymbolTable>();
-  Type type("i8");
-  auto v = Value("a", type);
+  auto symTable = std::make_unique<PTXSymbolTable>();
+  PTXType type("i8");
+  auto v = PTXValue("a", type);
   symTable->insert("a", v);
   auto shouldBeFound = symTable->lookup("a");
   if (!shouldBeFound) {
