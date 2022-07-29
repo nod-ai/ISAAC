@@ -2,16 +2,18 @@
 
 #include <string_view>
 
+class PTXInstruction;
+
 /**
  * @class Type
  * @brief This class represents the type of a value
  *
  */
-class Type {
+class PTXType {
   std::string_view type;
 public:
-  Type() = delete;
-  Type(std::string_view type_) : type(type_) {}
+  PTXType() {}
+  PTXType(std::string_view type_) : type(type_) {}
 };
 
 /**
@@ -19,13 +21,27 @@ public:
  * @brief This class represents a value in the CFG
  *
  */
-class Value {
+class PTXValue {
   std::string_view symbol;
-  Type type;
+  std::vector<PTXInstruction *> uses;
+  PTXInstruction *def;
+  PTXType type;
 public:
-  Value() = delete;
-  Value(std::string_view symbol_, Type type_) :
+  PTXValue() {}
+  PTXValue(std::string_view symbol_, PTXType type_) :
     symbol(symbol_), type(type_) {}
-  Type getType() const { return type; }
+  PTXType getType() const { return type; }
   std::string_view getSymbol() const { return symbol; }
+  void addUse(PTXInstruction *instr) {
+    uses.push_back(instr);
+  }
+  std::vector<PTXInstruction *> &getUses() {
+    return uses;
+  }
+  void addDefiningInstruction(PTXInstruction *instr) {
+    def = instr;
+  }
+  PTXInstruction *getDefiningInstruction() {
+    return def;
+  }
 };

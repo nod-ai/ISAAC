@@ -5,4 +5,5 @@ target_link_libraries(PTXToLLVMConversion
   PTXIR
   LLVMCore
   LLVMSupport
+  LLVMTransformUtils
 )

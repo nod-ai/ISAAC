@@ -10,12 +10,12 @@
  * @brief This class defines the symbol table.
  *
  */
-class SymbolTable {
-  std::unordered_map<std::string_view, Value> table;
+class PTXSymbolTable {
+  std::unordered_map<std::string_view, PTXValue> table;
 public:
 
-  SymbolTable() {}
-  ~SymbolTable() {}
+  PTXSymbolTable() {}
+  ~PTXSymbolTable() {}
 
   /**
    * @brief Looks up the symbol in the symbol table. Returns
@@ -23,7 +23,7 @@ public:
    *
    * @param symbol : Symbol to be searched
    */
-  std::optional<Value> lookup(std::string_view symbol) const {
+  std::optional<PTXValue> lookup(std::string_view symbol) const {
     if (table.contains(symbol)) {
       return table.at(symbol);
     }
@@ -37,7 +37,7 @@ public:
    * @param symbol : Symbol to be inserted into the table
    * @param value : Value corresponding to the symbol
    */
-  void insert(std::string_view symbol, Value value) {
+  void insert(std::string_view symbol, PTXValue value) {
     table.emplace(std::make_pair(symbol, value));
   }
 
