@@ -1,5 +1,4 @@
 #include "conversion/RaiseToLLVM.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
 #include <iostream>
@@ -11,12 +10,30 @@ PTXToLLVMConverter::PTXToLLVMConverter(PTXProgram &program_, LLVMContext &contex
     // TODO: Do we need to hardcode these values or can they be deduced from PTX?
     module->setDataLayout("e-i64:64-i128:128-v16:16-v32:32-n16:32:64");
     module->setTargetTriple("nvptx-nvidia-cuda");
+    typeInferrer = std::make_unique<PTXTypeInference>(context);
+}
+
+llvm::Type *PTXToLLVMConverter::mapType(std::string_view str) {
+  IRBuilder<> Builder(context);
+  if (str.find("ptr") != std::string::npos) {
+    return Builder.getPtrTy();
+  }
+  assert("Unimplemented");
+  return nullptr;
 }
 
 void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
-  IRBuilder<> Builder(context);
+  typeInferrer->doTypeInference(kernel.getBody());
   auto retTy = Type::getVoidTy(context);
-  auto FuncTy = FunctionType::get(retTy, false);
+  // Require type annotations for all arguments
+  std::vector<llvm::Type *> argTypes;
+  for (auto arg : kernel.getArguments()) {
+    auto argType = typeInferrer->getType(arg.getSymbol());
+    if (argType) {
+      argTypes.push_back(mapType(*argType));
+    }
+  }
+  auto FuncTy = FunctionType::get(retTy, argTypes, false);
   Function *F = Function::Create(FuncTy,
                                  Function::ExternalLinkage,
                                  kernel.getName(),
@@ -29,10 +46,10 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
   F->addFnAttr(Attribute::NoUnwind);
   F->addFnAttr(Attribute::OptimizeNone);
   BasicBlock *BB = BasicBlock::Create(context, "", F);
+  IRBuilder<> Builder(context);
   Builder.SetInsertPoint(BB);
   for (auto block : kernel.getBody().getBlocks()) {
     for (auto instr : block.getInstructions()) {
-      std::cout << "Processing ... " << instr.getName() << std::endl;
       if ((instr.getName() == "mov.u32") && (instr.getOperand(1)))  {
         CallInst *call;
         Function *FF;
