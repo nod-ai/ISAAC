@@ -10,42 +10,7 @@ enum Node_Type {
   // empty node type
   noneNode,
   // leaf modes
-  version_leaf,
-  double_constant_leaf,
-  oppcode_add_leaf,
-  comma_leaf,
-  semicolon_leaf,
-  u8_leaf,
-  u16_leaf,
-  u32_leaf,
-  u64_leaf,
-  s8_leaf,
-  s16_leaf,
-  s32_leaf,
-  s64_leaf,
-  b8_leaf,
-  b16_leaf,
-  b32_leaf,
-  b64_leaf,
-  f16_leaf,
-  f32_leaf,
-  f64_leaf,
-  closeBrace_leaf,
-  openBrace_leaf,
-  reg_leaf,
-  loc_leaf,
-  decimalConstant_leaf,
-  label_leaf,
-  pragma_leaf,
-  string_leaf,
-  callprototype_leaf,
-  calltargets_leaf,
-  opcodeAdd_leaf,
-  opcodeSub_leaf,
-  carry_leaf,
-  unsignedDecimalConstant_leaf,
-  doubleConstant_leaf,
-  singleConstant_leaf,
+  leaf,
   // grammer nodes
   statement,
   initializableDeclaration,
@@ -72,7 +37,30 @@ enum Node_Type {
   addOrSubOpcode,
   dataType,
   operand,
-  exclamationMark_leaf
+  optionalFloatingRoundNumber,
+  optionalFtz,
+  optionalSaturate,
+  identifier,
+  opcode,
+  floatingRoundingToken,
+  entryName,
+  optionalArgumentList,
+  performanceDirectives,
+  optionalMetadata,
+  guard,
+  uninitializable,
+  arrayDimensions,
+  returnTypeList,
+  addressableVariablePrefix,
+  registerPrefix,
+  argumentTypeList,
+  registerIdentifierList,
+  identifierList,
+  optionalVectorIndex,
+  target,
+  targetElementList,
+  targetElement,
+  externOrVisible,
 };
 
 class Node {
@@ -97,11 +85,13 @@ public:
 };
 
 class Parser {
+
   int current_token_index;
   Node parse_tree;
 
 public:
   void parse(std::vector<Token> tokens);
+  void run_tests();
 
 private:
   void advance(std::vector<Token> tokens);
@@ -219,5 +209,10 @@ private:
   int parse_constantOperand(std::vector<Token> tokens, Node &node);
   int parse_nonLabelOperand(std::vector<Token> tokens, Node &node);
   int parse_optionalVectorIndex(std::vector<Token> tokens, Node &node);
+  int parse_opcode(std::vector<Token> tokens, Node &node);
+  int parse_floatRoundingToken(std::vector<Token> tokens, Node &node);
+  int parse_targetElementList(std::vector<Token> tokens, Node &node);
+  int parse_targetElement(std::vector<Token> tokens, Node &node);
+  int parse_externOrVisible(std::vector<Token> tokens, Node &node);
 };
 } // namespace ptx_parser
