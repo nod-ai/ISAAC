@@ -4,6 +4,7 @@
 #include <vector>
 #include <optional>
 #include <string_view>
+#include <string>
 #include "ir/Value.h"
 #include "ir/SymbolTable.h"
 
@@ -38,6 +39,9 @@ public:
     name(name_), operands(operands_) {}
   ~PTXInstruction() {}
   std::string_view getName() const { return name; }
+  size_t getNumOperands() const {
+    return operands.size();
+  }
   std::optional<PTXOperand> getOperand(size_t idx) {
     if (idx < operands.size()) return operands[idx];
     return {};
@@ -47,6 +51,14 @@ public:
   }
   std::string_view getOperandType() {
     return name.substr(name.size() - 3);
+  }
+  std::string print() {
+    std::string str = std::string(name) + " ";
+    for (size_t i = 0; i < operands.size() - 1; i++) {
+      str += std::string(operands[i].getName()) + ", ";
+    }
+    str += std::string(operands[operands.size() - 1].getName()) + ";\n";
+    return str;
   }
 };
 
@@ -128,6 +140,7 @@ public:
             PTXControlFlowGraph &body_);
   std::string_view getName() const { return name; }
   PTXControlFlowGraph &getBody() { return body; }
+  std::vector<PTXValue> &getArguments() { return arguments; }
 };
 
 
