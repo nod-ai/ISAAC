@@ -12,7 +12,7 @@ public:
   void doTypeInference(PTXControlFlowGraph &cfg);
   void constrainType(std::string_view name, std::string_view type);
   void applyConstraints(PTXInstruction &instr);
-  std::optional<std::string_view> getType(std::string_view symbol);
+  std::string_view getType(std::string_view symbol);
 private:
   llvm::LLVMContext &context;
   std::unordered_map<std::string_view, std::string_view> typeMap;

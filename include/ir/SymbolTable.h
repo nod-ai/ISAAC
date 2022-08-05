@@ -2,8 +2,10 @@
 
 #include "ir/Value.h"
 #include <unordered_map>
+#include <string>
 #include <string_view>
 #include <optional>
+#include <iterator>
 
 /**
  * @class SymbolTable
@@ -11,7 +13,7 @@
  *
  */
 class PTXSymbolTable {
-  std::unordered_map<std::string_view, PTXValue> table;
+  std::unordered_map<std::string_view, std::shared_ptr<PTXValue>> table;
 public:
 
   PTXSymbolTable() {}
@@ -23,7 +25,7 @@ public:
    *
    * @param symbol : Symbol to be searched
    */
-  std::optional<PTXValue> lookup(std::string_view symbol) const {
+  std::optional<std::shared_ptr<PTXValue>> lookup(std::string_view symbol) const {
     if (table.contains(symbol)) {
       return table.at(symbol);
     }
@@ -37,7 +39,7 @@ public:
    * @param symbol : Symbol to be inserted into the table
    * @param value : Value corresponding to the symbol
    */
-  void insert(std::string_view symbol, PTXValue value) {
+  void insert(std::string_view symbol, std::shared_ptr<PTXValue> value) {
     table.emplace(std::make_pair(symbol, value));
   }
 
