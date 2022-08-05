@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string_view>
+#include <iostream>
 
 class PTXInstruction;
 
@@ -37,6 +38,9 @@ public:
   }
   std::vector<PTXInstruction *> &getUses() {
     return uses;
+  }
+  size_t getNumUses() const {
+    return uses.size();
   }
   void addDefiningInstruction(PTXInstruction *instr) {
     def = instr;

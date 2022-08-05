@@ -42,9 +42,8 @@ public:
   size_t getNumOperands() const {
     return operands.size();
   }
-  std::optional<PTXOperand> getOperand(size_t idx) {
-    if (idx < operands.size()) return operands[idx];
-    return {};
+  PTXOperand getOperand(size_t idx) {
+    return operands[idx];
   }
   std::vector<PTXOperand> & getOperands() {
     return operands;
@@ -122,6 +121,12 @@ public:
   const std::vector<PTXBasicBlock> &getBlocks() const {
     return blocks;
   }
+  std::optional<std::shared_ptr<PTXValue>> lookup(std::string_view symbol) {
+    return symbolTable.lookup(symbol);
+  }
+  PTXSymbolTable &getSymbolTable() {
+    return symbolTable;
+  }
 };
 
 
@@ -133,14 +138,16 @@ public:
  */
 class PTXKernel {
   std::string_view name;
-  std::vector<PTXValue> arguments;
+  std::vector<std::shared_ptr<PTXValue>> arguments;
   PTXControlFlowGraph body;
 public:
-  PTXKernel(std::string_view name_, std::vector<PTXValue> &arguments_,
+  PTXKernel(std::string_view name_, std::vector<std::shared_ptr<PTXValue>> &arguments_,
             PTXControlFlowGraph &body_);
   std::string_view getName() const { return name; }
   PTXControlFlowGraph &getBody() { return body; }
-  std::vector<PTXValue> &getArguments() { return arguments; }
+  std::vector<std::shared_ptr<PTXValue>> &getArguments() { return arguments; }
+  size_t numArguments() const { return arguments.size(); }
+  std::shared_ptr<PTXValue> &getArgument(size_t i) { return arguments.at(i); }
 };
 
 

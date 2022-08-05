@@ -18,10 +18,10 @@
 TEST(RaiseToLLVMTest, SimpleKernel) {
   llvm::LLVMContext context;
   PTXProgram program("kernel");
-  std::vector<PTXValue> args;
-  args.push_back(PTXValue("_Z3addPKfS0_Pf_param_0", PTXType("u64")));
-  args.push_back(PTXValue("_Z3addPKfS0_Pf_param_1", PTXType("u64")));
-  args.push_back(PTXValue("_Z3addPKfS0_Pf_param_2", PTXType("u64")));
+  std::vector<std::shared_ptr<PTXValue>> args;
+  args.push_back(std::make_shared<PTXValue>("_Z3addPKfS0_Pf_param_0", PTXType("u64")));
+  args.push_back(std::make_shared<PTXValue>("_Z3addPKfS0_Pf_param_1", PTXType("u64")));
+  args.push_back(std::make_shared<PTXValue>("_Z3addPKfS0_Pf_param_2", PTXType("u64")));
   PTXControlFlowGraph body;
   PTXBasicBlock block;
 	DEFINE("mov.u64",	"%SPL", "__local_depot6");
@@ -71,9 +71,19 @@ TEST(RaiseToLLVMTest, SimpleKernel) {
     "target triple = \"nvptx-nvidia-cuda\"\n\n"
     "; Function Attrs: convergent mustprogress noinline norecurse nounwind optnone\n"
     "define void @add(ptr %0, ptr %1, ptr %2) #0 {\n"
-    "  %4 = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()\n"
-    "  %5 = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()\n"
-    "  %6 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()\n"
+    "  %4 = alloca ptr, align 8\n"
+    "  store ptr %0, ptr %4, align 8\n"
+    "  %5 = alloca ptr, align 8\n"
+    "  store ptr %1, ptr %5, align 8\n"
+    "  %6 = alloca ptr, align 8\n"
+    "  store ptr %2, ptr %6, align 8\n"
+    "  %7 = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()\n"
+    "  %8 = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()\n"
+    "  %9 = mul i32 %7, %8\n"
+    "  %10 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()\n"
+    "  %11 = add i32 %9, %10\n"
+    "  %12 = alloca i32, align 4\n"
+    "  store i32 %11, ptr %12, align 4\n"
     "}\n\n"
     "; Function Attrs: nocallback nofree nosync nounwind readnone speculatable willreturn\n"
     "declare i32 @llvm.nvvm.read.ptx.sreg.ctaid.x() #1\n\n"
