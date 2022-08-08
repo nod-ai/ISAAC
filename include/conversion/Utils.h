@@ -16,5 +16,9 @@ bool isMoveInstruction(std::vector<std::string_view> &tokens);
 bool isMulInstruction(std::vector<std::string_view> &tokens);
 std::string_view getAddress(std::string_view str);
 bool isDereference(std::string_view str);
+std::string_view getStateSpace(std::vector<std::string_view> &tokens);
+std::string_view getInstrType(std::vector<std::string_view> &tokens);
+std::string_view getInstrMode(std::vector<std::string_view> &tokens);
+bool isAddInstruction(std::vector<std::string_view> &tokens);
 
 }
