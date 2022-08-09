@@ -1,7 +1,7 @@
 #include "Lexer.hpp"
 #include <regex>
 
-namespace ptx_parser {
+namespace ptx {
 
 void Token::clear() {
   token_type = TOKEN_UNRECOGNIZED;
@@ -17,7 +17,19 @@ Token::Token(std::string text_) {
   if (text_ == ".version") {
     token_type = TOKEN_VERSION;
   } else if (text_ == ".weak") {
-    token_type = OPCODE_ADD;
+    token_type = TOKEN_WEAK;
+  } else if (text_ == ".func") {
+    token_type = TOKEN_FUNCTION;
+  } else if (text_ == ".param") {
+    token_type = TOKEN_PARAM;
+  } else if (text_ == "b32") {
+    token_type = TOKEN_B32;
+  } else if (text_ == ".b64") {
+    token_type = TOKEN_B64;
+  } else if (text_ == "(") {
+    token_type = TOKEN_OPENPARENTHESIS;
+  } else if (text_ == ")") {
+    token_type = TOKEN_CLOSEPARENTHESIS;
   } else if (text_ == "add") {
     token_type = OPCODE_ADD;
   } else if (text_ == "sub") {
@@ -46,6 +58,8 @@ Token::Token(std::string text_) {
     token_type = OPCODE_BREV;
   } else if (text_ == "brkpt") {
     token_type = OPCODE_BRKPT;
+  } else if(text_ == "div") {
+    token_type = OPCODE_DIV;
   } else if (text_ == ".cc") {
     token_type = TOKEN_CARRY;
   } else if (text_ == ".s8") {

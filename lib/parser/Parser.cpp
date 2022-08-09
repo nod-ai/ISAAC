@@ -1,6 +1,6 @@
 #include "Parser.hpp"
 
-namespace ptx_parser {
+namespace ptx {
 
 std::string Node::repr() {
   std::string output = "";
@@ -22,14 +22,14 @@ std::string Node::repr() {
 
 void Parser::parse(std::vector<Token> tokens) {
   current_token_index = 0;
-  int success = 0;
+  bool success = false;
   Node child_node;
 
   while (current_token_index < tokens.size()) {
 
     success = parse_statement(tokens, child_node);
 
-    if (success == 1) {
+    if (success) {
       parse_tree.add(child_node);
       std::cout << "SUCCESS" << std::endl;
     } else {
@@ -38,115 +38,276 @@ void Parser::parse(std::vector<Token> tokens) {
   }
 }
 
+bool Parser::handle_token(Node_Type node_type, std::vector<Token> tokens, Node &node, Node &parent_node) {
+  if(tokens[current_token_index].token_type == node_type) {
+    node.set_type(leaf);
+    node.set_token(tokens[current_token_index]);
+    parent_node.add(node);
+    advance(tokens);
+    return true;
+  }
+  parent_node.reset();
+  node.reset();
+  return false;
+}
+
+
+
+bool Parser::parse_grammer_sequence(std::vector<Node_Type> node_sequence, std::vector<Token> tokens, Node &node){
+  Node child_node;
+  int current_token_index_placeholder = current_token_index;
+  bool success;
+
+  for (Node_Type node_type : node_sequence) {
+    child_node.reset();
+    switch(node_type) {
+
+      // Tokens
+
+      case OPCODE_ADD:
+        if( ! handle_token(OPCODE_ADD, tokens, child_node, node)) {
+          current_token_index = current_token_index_placeholder;
+          return false;
+        }
+
+      case OPCODE_SUB:
+        if( ! handle_token(OPCODE_SUB, tokens, child_node, node)) {
+          current_token_index = current_token_index_placeholder;
+          return false;
+        }
+
+      case OPCODE_COS:
+        if( ! handle_token(OPCODE_COS, tokens, child_node, node)) {
+          current_token_index = current_token_index_placeholder;
+          return false;
+        }
+
+      case OPCODE_SQRT:
+        if( ! handle_token(OPCODE_SQRT, tokens, child_node, node)) {
+          current_token_index = current_token_index_placeholder;
+          return false;
+        }
+
+      // Grammers
+        
+      case statement:
+        success = parse_statement(tokens, child_node);
+        if(success) {
+          node.add(child_node);
+        } else {
+          current_token_index = current_token_index_placeholder;
+          node.reset();
+          return false;
+        }
+
+        case initializableDeclaration:
+        success = parse_initializableDeclaration(tokens, child_node);
+        if(success) {
+          node.add(child_node);
+        } else {
+          current_token_index = current_token_index_placeholder;
+          node.reset();
+          return false;
+        }
+
+        case externOrVisible:
+        success = parse_externOrVisible(tokens, child_node);
+        if(success) {
+          node.add(child_node);
+        } else {
+          current_token_index = current_token_index_placeholder;
+          node.reset();
+          return false;
+        }
+
+        case initializableAddress:
+        success = parse_initializableAddress(tokens, child_node);
+        if(success) {
+          node.add(child_node);
+        } else {
+          current_token_index = current_token_index_placeholder;
+          node.reset();
+          return false;
+        }
+
+        default:
+        return false;
+
+    }
+
+  }
+  return true;
+}
+
 void Parser::advance(std::vector<Token> tokens) {
   current_token_index = current_token_index + 1;
 }
 
-int Parser::parse_statement(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_statement(std::vector<Token> tokens, Node &node) {
   std::cout << "Attempting To Parse Statement" << std::endl;
-  int success = 0;
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(statement);
   Node child_node;
 
   success = parse_initializableDeclaration(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     current_token_index = current_token_index_placeholder;
     child_node.reset();
   }
 
   success = parse_nonEntryStatement(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     current_token_index = current_token_index_placeholder;
     child_node.reset();
   }
 
   success = parse_entry(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     current_token_index = current_token_index_placeholder;
     child_node.reset();
   }
 
   success = parse_functionBody(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     current_token_index = current_token_index_placeholder;
     child_node.reset();
   }
 
   success = parse_functionDeclaration(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     current_token_index = current_token_index_placeholder;
     child_node.reset();
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_initializableDeclaration(std::vector<Token> tokens,
+bool Parser::parse_initializableDeclaration(std::vector<Token> tokens,
                                            Node &node) {
-  int success = 0;
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
-
   node.set_type(initializableDeclaration);
   Node child_node;
 
-  // NOT YET IMPLEMENTED
+  success = parse_initializable(tokens, child_node);
+  if (success) {
+    node.add(child_node);
+    child_node.reset();
 
-  return 0;
+    success = parse_addressableVariablePrefix(tokens, child_node);
+    if(success) {
+      node.add(child_node);
+      child_node.reset();
+
+      success = parse_identifier(tokens, child_node);
+      if(success) {
+        node.add(child_node);
+        child_node.reset();
+
+        success = parse_arrayDimensions(tokens, child_node);
+        if(success) {
+          node.add(child_node);
+          child_node.reset();
+
+          success = parse_identifier(tokens, child_node);
+          if(success) {
+            node.add(child_node);
+            child_node.reset();
+
+            if(tokens[current_token_index].token_type == TOKEN_SEMICOLON) {
+              child_node.set_type(leaf);
+              child_node.set_token(tokens[current_token_index]);
+              node.add(child_node);
+              child_node.reset();
+              advance(tokens);
+              return true;
+            } else {
+              node.reset();
+              child_node.reset();
+              current_token_index = current_token_index_placeholder;
+            }
+          } else {
+            node.reset();
+            child_node.reset();
+            current_token_index = current_token_index_placeholder;
+          }
+        } else {
+          node.reset();
+          child_node.reset();
+          current_token_index = current_token_index_placeholder;
+        }
+      } else {
+        node.reset();
+        child_node.reset();
+        current_token_index = current_token_index_placeholder;
+      }
+    } else {
+      node.reset();
+      child_node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    child_node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+
+  return false;
 }
 
-int Parser::parse_nonEntryStatement(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_nonEntryStatement(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(nonEntryStatement);
   Node child_node;
 
   success = parse_version(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     current_token_index = current_token_index_placeholder;
     child_node.reset();
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_entry(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_entry(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(entry);
   Node child_node;
 
   success = parse_entryDeclaration(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
     success = parse_openBrace(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
       int token_index_1 = current_token_index;
       success = parse_entryStatements(tokens, child_node);
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
         child_node.reset();
       } else {
@@ -154,9 +315,9 @@ int Parser::parse_entry(std::vector<Token> tokens, Node &node) {
         current_token_index = token_index_1;
       }
       success = parse_closeBrace(tokens, child_node);
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
-        return 1;
+        return true;
       } else {
         child_node.reset();
         node.reset();
@@ -174,7 +335,7 @@ int Parser::parse_entry(std::vector<Token> tokens, Node &node) {
   }
 
   success = parse_entryDeclaration(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
     if (tokens[current_token_index].token_type == TOKEN_SEMICOLON) {
@@ -183,7 +344,7 @@ int Parser::parse_entry(std::vector<Token> tokens, Node &node) {
       node.add(child_node);
       child_node.reset();
       advance(tokens);
-      return 1;
+      return true;
     } else {
       child_node.reset();
       node.reset();
@@ -195,35 +356,411 @@ int Parser::parse_entry(std::vector<Token> tokens, Node &node) {
     current_token_index = current_token_index_placeholder;
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_functionBody(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_functionBegin(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(functionBegin);
+  Node child_node;
+
+  if (tokens[current_token_index].token_type == TOKEN_FUNCTION) {
+    child_node.set_type(leaf);
+    child_node.set_token(tokens[current_token_index]);
+    node.add(child_node);
+    child_node.reset();
+    advance(tokens);
+    return true;
+  }
+
+  return false;
+}
+
+bool Parser::parse_functionBody(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(functionBody);
   Node child_node;
 
-  // NOT YET IMPLEMENTED
+  success = parse_functionBodyDefinition(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    child_node.reset();
 
-  return 0;
+    if(tokens[current_token_index].token_type == TOKEN_OPENBRACE) {
+      child_node.set_type(leaf);
+      child_node.set_token(tokens[current_token_index]);
+      node.add(child_node);
+      child_node.reset();
+      advance(tokens);
+
+      success = parse_entryStatements(tokens, child_node);
+      if(success){
+        node.add(child_node);
+        child_node.reset();
+
+        if(tokens[current_token_index].token_type == TOKEN_CLOSEBRACE) {
+          child_node.set_type(leaf);
+          child_node.set_token(tokens[current_token_index]);
+          node.add(child_node);
+          advance(tokens);
+          return true;
+        } else {
+          node.reset();
+          child_node.reset();
+          current_token_index = current_token_index_placeholder;
+        }
+      } else {
+        node.reset();
+        child_node.reset();
+        current_token_index = current_token_index_placeholder;
+      }
+    } else {
+      node.reset();
+      child_node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    child_node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+
+  return false;
 }
 
-int Parser::parse_functionDeclaration(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_functionBodyDefinition(std::vector<Token> tokens, Node &node) {
+  bool success = false;
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(functionBodyDefinition);
+  Node child_node;
+
+  success = parse_externOrVisible(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    child_node.reset();
+
+    success = parse_functionBegin(tokens, child_node);
+    if(success) {
+      node.add(child_node);
+      child_node.reset();
+
+      success = parse_optionalReturnArgument(tokens, child_node);
+      if(success) {
+        node.add(child_node);
+        child_node.reset();
+
+        success = parse_functionName(tokens, child_node);
+        if(success) {
+          node.add(child_node);
+          child_node.reset();
+
+          success = parse_argumentList(tokens, child_node);
+          if(success) {
+            node.add(child_node);
+            child_node.reset();
+            return true;
+          } else {
+            node.reset();
+            child_node.reset();
+            current_token_index = current_token_index_placeholder;
+          }
+        } else {
+          node.reset();
+          child_node.reset();
+          current_token_index = current_token_index_placeholder;
+        }
+      } else {
+        node.reset();
+        child_node.reset();
+        current_token_index = current_token_index_placeholder;
+      }
+    } else {
+      node.reset();
+      child_node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    child_node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+
+
+
+  return false;
+}
+
+bool Parser::parse_argumentList(std::vector<Token> tokens, Node &node) {
+  bool success;
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(argumentList);
+  Node child_node;
+
+  success = parse_argumentListBegin(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    child_node.reset();
+    success = parse_argumentListBody(tokens, child_node);
+
+    if(success) {
+      node.add(child_node);
+      child_node.reset();
+      success = parse_argumentListEnd(tokens, child_node);
+
+      if(success) {
+        node.add(child_node);
+        child_node.reset();
+        return true;
+      } else {
+        node.reset();
+        child_node.reset();
+        current_token_index = current_token_index_placeholder;
+      }
+    } else {
+      node.reset();
+      child_node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    child_node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+  return false;
+}
+
+bool Parser::parse_argumentListBody(std::vector<Token> tokens, Node &node) {
+  bool success = false;
+  node.set_type(argumentListBody);
+  Node child_node;
+  bool end_of_list = false;
+
+  while (!end_of_list) {
+    int current_token_index_placeholder0 = current_token_index;
+    success = parse_argumentDeclaration(tokens, child_node);
+    if(success) {
+      int current_token_index_placeholder1 = current_token_index;
+      node.add(child_node);
+      child_node.reset();
+      if(tokens[current_token_index].token_type == TOKEN_COMMA) {
+        child_node.set_type(leaf);
+        child_node.set_token(tokens[current_token_index]);
+        node.add(child_node);
+        advance(tokens);
+      } else {
+        end_of_list = true;
+        current_token_index = current_token_index_placeholder1;
+      }
+    } else {
+      end_of_list = true;
+      current_token_index = current_token_index_placeholder0;
+    }
+  }
+
+  return true;
+}
+
+bool Parser::parse_argumentDeclaration(std::vector<Token> tokens, Node &node){
+  bool success = false;
+  node.set_type(argumentDeclaration);
+  Node child_node;
+  int current_token_index_placeholder = current_token_index;
+
+  success = parse_parameter(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    child_node.reset();
+
+    success = parse_addressableVariablePrefix(tokens, child_node);
+    if(success) {
+      node.add(child_node);
+      child_node.reset();
+
+      success = parse_identifier(tokens, child_node);
+      if(success) {
+        node.add(child_node);
+        child_node.reset();
+
+        success = parse_arrayDimensions(tokens, child_node);
+        if(success) {
+          node.add(child_node);
+          return true;
+        } else {
+          node.reset();
+          current_token_index = current_token_index_placeholder;
+        }
+      } else {
+        node.reset();
+        current_token_index = current_token_index_placeholder;
+      }
+    } else {
+      node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+return false;
+
+}
+
+bool Parser::parse_identifier(std::vector<Token> tokens, Node &node) {
+  bool success = false;
+  Node child_node;
+  node.set_type(identifier);
+  int current_token_index_placeholder = current_token_index;
+
+  if(tokens[current_token_index].token_type == TOKEN_UNDERSCORE ||
+     tokens[current_token_index].token_type == TOKEN_IDENTIFIER) {
+      child_node.set_type(leaf);
+      child_node.set_token(tokens[current_token_index]);
+      node.add(child_node);
+      advance(tokens);
+      return true;
+     }
+
+  success = parse_opcode(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    return true;
+  } else {
+    node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+
+  return false;
+}
+
+bool Parser::parse_parameter(std::vector<Token> tokens, Node &node) {
+  bool success = false;
+  Node child_node;
+  node.set_type(parameter);
+
+  if(tokens[current_token_index].token_type == TOKEN_REG ||
+     tokens[current_token_index].token_type == TOKEN_PARAM) {
+      child_node.set_type(leaf);
+      child_node.set_token(tokens[current_token_index]);
+      node.add(child_node);
+      advance(tokens);
+      return true;
+     }
+
+  return false;
+
+}
+
+bool Parser::parse_functionName(std::vector<Token> tokens, Node &node) {
+  bool success = false;
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(functionName);
+  Node child_node;
+
+  success = parse_identifier(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    return true;
+  } else {
+    node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+
+  return false;
+}
+
+bool Parser::parse_functionDeclaration(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(functionDeclaration);
   Node child_node;
 
-  // NOT YET IMPLEMENTED
+  success = parse_externOrVisible(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    child_node.reset();
 
-  return 0;
+    success = parse_functionBegin(tokens, child_node);
+    if(success) {
+      node.add(child_node);
+      child_node.reset();
+
+      success = parse_optionalArgumentList(tokens, child_node);
+      if(success) {
+        node.add(child_node);
+        child_node.reset();
+
+        success = parse_functionName(tokens, child_node);
+        if(success) {
+          node.add(child_node);
+          child_node.reset();
+
+          success = parse_argumentList(tokens, child_node);
+          if(success){
+            node.add(child_node);
+            child_node.reset();
+
+            success = parse_optionalSemicolon(tokens, child_node);
+            if(success) {
+              node.add(child_node);
+              child_node.reset();
+              return true;
+            } else {
+              node.reset();
+              child_node.reset();
+              current_token_index = current_token_index_placeholder;
+            }
+          } else {
+            node.reset();
+            child_node.reset();
+            current_token_index = current_token_index_placeholder;
+          }
+        } else {
+          node.reset();
+          child_node.reset();
+          current_token_index = current_token_index_placeholder;
+        }
+      } else {
+        node.reset();
+        child_node.reset();
+        current_token_index = current_token_index_placeholder;
+      }
+    } else {
+      node.reset();
+      child_node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    child_node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+
+  return false;
 }
 
-int Parser::parse_version(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_optionalSemicolon(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  Node child_node;
+  node.set_type(optionalSemicolon);
+
+  if(tokens[current_token_index].token_type == TOKEN_SEMICOLON){
+    child_node.set_type(leaf);
+    child_node.set_token(tokens[current_token_index]);
+    node.add(child_node);
+    child_node.reset();
+    advance(tokens);
+  }
+
+  return true;
+
+
+}
+
+bool Parser::parse_version(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(version);
@@ -240,33 +777,33 @@ int Parser::parse_version(std::vector<Token> tokens, Node &node) {
       double_constant_node.set_token(tokens[current_token_index]);
       node.add(double_constant_node);
       advance(tokens);
-      return 1;
+      return true;
     }
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_entryDeclaration(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_entryDeclaration(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(entryDeclaration);
   Node child_node;
 
   success = parse_entryName(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
     success = parse_optionalArgumentList(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
       success = parse_performanceDirectives(tokens, child_node);
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
         child_node.reset();
-        return 1;
+        return true;
       } else {
         child_node.reset();
         node.reset();
@@ -282,11 +819,11 @@ int Parser::parse_entryDeclaration(std::vector<Token> tokens, Node &node) {
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_openBrace(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_openBrace(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(openBrace);
@@ -297,14 +834,14 @@ int Parser::parse_openBrace(std::vector<Token> tokens, Node &node) {
     child_node.set_token(tokens[current_token_index]);
     node.add(child_node);
     advance(tokens);
-    return 1;
+    return true;
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_closeBrace(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_closeBrace(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(closeBrace);
@@ -315,21 +852,21 @@ int Parser::parse_closeBrace(std::vector<Token> tokens, Node &node) {
     child_node.set_token(tokens[current_token_index]);
     node.add(child_node);
     advance(tokens);
-    return 1;
+    return true;
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_entryStatements(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_entryStatements(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(entryStatements);
   Node child_node;
 
   success = parse_completeEntryStatement(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
   } else {
@@ -337,61 +874,61 @@ int Parser::parse_entryStatements(std::vector<Token> tokens, Node &node) {
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  if (success == 1) {
+  if (success) {
     int token_index_checkpoint_0 = current_token_index;
     success = parse_entryStatements(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
-      return 1;
+      return true;
     } else {
       child_node.reset();
       node.reset();
       current_token_index = token_index_checkpoint_0;
     }
-    return 1;
+    return true;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_completeEntryStatement(std::vector<Token> tokens,
+bool Parser::parse_completeEntryStatement(std::vector<Token> tokens,
                                          Node &node) {
-  int success = 0;
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(completeEntryStatement);
   Node child_node;
 
   success = parse_uninitializableDeclaration(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
 
   success = parse_entryStatement(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
 
   success = parse_guard(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
     success = parse_instruction(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
       success = parse_optionalMetadata(tokens, child_node);
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
-        return 1;
+        return true;
       } else {
         child_node.reset();
         node.reset();
@@ -409,17 +946,17 @@ int Parser::parse_completeEntryStatement(std::vector<Token> tokens,
   }
 
   success = parse_openBrace(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
     success = parse_entryStatements(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
       success = parse_closeBrace(tokens, child_node);
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
-        return 1;
+        return true;
       } else {
         child_node.reset();
         node.reset();
@@ -435,31 +972,31 @@ int Parser::parse_completeEntryStatement(std::vector<Token> tokens,
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_uninitializableDeclaration(std::vector<Token> tokens,
+bool Parser::parse_uninitializableDeclaration(std::vector<Token> tokens,
                                              Node &node) {
-  int success = 0;
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(uninitializableDeclaration);
   Node child_node;
 
   success = parse_uninitializable(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
     success = parse_addressableVariablePrefix(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
       success = parse_identifier(tokens, child_node);
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
         child_node.reset();
         success = parse_arrayDimensions(tokens, child_node);
-        if (success == 1) {
+        if (success) {
           node.add(child_node);
           child_node.reset();
           if (tokens[current_token_index].token_type == TOKEN_SEMICOLON) {
@@ -468,7 +1005,7 @@ int Parser::parse_uninitializableDeclaration(std::vector<Token> tokens,
             node.add(child_node);
             child_node.reset();
             advance(tokens);
-            return 1;
+            return true;
           } else {
             child_node.reset();
             node.reset();
@@ -495,90 +1032,90 @@ int Parser::parse_uninitializableDeclaration(std::vector<Token> tokens,
     current_token_index = current_token_index_placeholder;
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_entryStatement(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_entryStatement(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
 
   node.set_type(entryStatement);
   Node child_node;
 
   success = parse_registerDeclaration(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
 
   success = parse_location(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
 
   success = parse_label(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
 
   success = parse_pragma(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
 
   success = parse_callprototype(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
 
   success = parse_calltargets(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_registerDeclaration(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_registerDeclaration(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
   node.set_type(registerDeclaration);
   Node child_node;
 
-  if (tokens[current_token_index].token_type == TOKRN_REG) {
+  if (tokens[current_token_index].token_type == TOKEN_REG) {
     Node reg_node;
     reg_node.set_type(leaf);
     reg_node.set_token(tokens[current_token_index]);
     node.add(reg_node);
     advance(tokens);
     success = parse_registerPrefix(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
       success = parse_registerIdentifierList(tokens, child_node);
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
         child_node.reset();
         if (tokens[current_token_index].token_type == TOKEN_SEMICOLON) {
@@ -587,7 +1124,7 @@ int Parser::parse_registerDeclaration(std::vector<Token> tokens, Node &node) {
           semicolon_node.set_token(tokens[current_token_index]);
           node.add(semicolon_node);
           advance(tokens);
-          return 1;
+          return true;
         } else {
           node.reset();
           current_token_index = current_token_index_placeholder;
@@ -606,11 +1143,11 @@ int Parser::parse_registerDeclaration(std::vector<Token> tokens, Node &node) {
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_location(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_location(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
   node.set_type(location);
 
@@ -641,7 +1178,7 @@ int Parser::parse_location(std::vector<Token> tokens, Node &node) {
           decimal_constant_node.set_token(tokens[current_token_index]);
           node.add(decimal_constant_node);
           advance(tokens);
-          return 1;
+          return true;
         } else {
           node.reset();
           current_token_index = current_token_index_placeholder;
@@ -658,11 +1195,11 @@ int Parser::parse_location(std::vector<Token> tokens, Node &node) {
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_label(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_label(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
   node.set_type(location);
   Node child_node;
@@ -674,9 +1211,9 @@ int Parser::parse_label(std::vector<Token> tokens, Node &node) {
     node.add(label_node);
     advance(tokens);
     success = parse_optionalMetadata(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
-      return 1;
+      return true;
     } else {
       node.reset();
       current_token_index = current_token_index_placeholder;
@@ -686,11 +1223,11 @@ int Parser::parse_label(std::vector<Token> tokens, Node &node) {
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_pragma(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_pragma(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
   node.set_type(pragma);
 
@@ -716,7 +1253,7 @@ int Parser::parse_pragma(std::vector<Token> tokens, Node &node) {
         advance(tokens);
       }
 
-      return 1;
+      return true;
     } else {
       node.reset();
       current_token_index = current_token_index_placeholder;
@@ -725,11 +1262,11 @@ int Parser::parse_pragma(std::vector<Token> tokens, Node &node) {
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_callprototype(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_callprototype(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
   node.set_type(callprototype);
   Node child_node;
@@ -749,17 +1286,17 @@ int Parser::parse_callprototype(std::vector<Token> tokens, Node &node) {
       advance(tokens);
       success = parse_returnTypeList(tokens, child_node);
 
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
         child_node.reset();
         success = parse_identifier(tokens, child_node);
 
-        if (success == 1) {
+        if (success) {
           node.add(child_node);
           child_node.reset();
           success = parse_argumentTypeList(tokens, child_node);
 
-          if (success == 1) {
+          if (success) {
             node.add(child_node);
             child_node.reset();
             if (tokens[current_token_index].token_type == TOKEN_SEMICOLON) {
@@ -768,7 +1305,7 @@ int Parser::parse_callprototype(std::vector<Token> tokens, Node &node) {
               node.add(child_node);
               child_node.reset();
               advance(tokens);
-              return 1;
+              return true;
             } else {
               child_node.reset();
               node.reset();
@@ -800,11 +1337,11 @@ int Parser::parse_callprototype(std::vector<Token> tokens, Node &node) {
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_calltargets(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_calltargets(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
   node.set_type(calltargets);
   Node child_node;
@@ -824,7 +1361,7 @@ int Parser::parse_calltargets(std::vector<Token> tokens, Node &node) {
       advance(tokens);
 
       success = parse_identifierList(tokens, child_node);
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
         child_node.reset();
 
@@ -854,68 +1391,68 @@ int Parser::parse_calltargets(std::vector<Token> tokens, Node &node) {
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_instruction(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_instruction(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
   node.set_type(instruction);
   Node child_node;
 
   success = parse_addOrSub(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
 
   // success = parse_ftzInstruction2(tokens, child_node);
-  // if(success == 1) {
+  // if(success) {
   // 	node.add(child_node);
-  // 	return 1;
+  // 	return true;
   // } else {
   // 	child_node.reset();
   // 	current_token_index = current_token_index_placeholder;
   // }
 
   // success = parse_ftzInstruction3(tokens, child_node);
-  // if(success == 1) {
+  // if(success) {
   // 	node.add(child_node);
-  // 	return 1;
+  // 	return true;
   // } else {
   // 	child_node.reset();
   // 	current_token_index = current_token_index_placeholder;
   // }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_addOrSub(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_addOrSub(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
   node.set_type(addOrSub);
   Node child_node;
 
   success = parse_addOrSubOpcode(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
 
     success = parse_addModifier(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
 
       success = parse_dataType(tokens, child_node);
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
         child_node.reset();
 
         success = parse_operand(tokens, child_node);
-        if (success == 1) {
+        if (success) {
           node.add(child_node);
           child_node.reset();
 
@@ -927,7 +1464,7 @@ int Parser::parse_addOrSub(std::vector<Token> tokens, Node &node) {
             advance(tokens);
 
             success = parse_operand(tokens, child_node);
-            if (success == 1) {
+            if (success) {
               node.add(child_node);
               child_node.reset();
 
@@ -939,7 +1476,7 @@ int Parser::parse_addOrSub(std::vector<Token> tokens, Node &node) {
                 advance(tokens);
 
                 success = parse_operand(tokens, child_node);
-                if (success == 1) {
+                if (success) {
                   node.add(child_node);
                   child_node.reset();
 
@@ -950,7 +1487,7 @@ int Parser::parse_addOrSub(std::vector<Token> tokens, Node &node) {
                     node.add(child_node);
                     child_node.reset();
                     advance(tokens);
-                    return 1;
+                    return true;
                   } else {
                     child_node.reset();
                     node.reset();
@@ -996,11 +1533,11 @@ int Parser::parse_addOrSub(std::vector<Token> tokens, Node &node) {
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_addOrSubOpcode(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_addOrSubOpcode(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
   node.set_type(addOrSubOpcode);
   Node child_node;
@@ -1011,7 +1548,7 @@ int Parser::parse_addOrSubOpcode(std::vector<Token> tokens, Node &node) {
     node.add(child_node);
     child_node.reset();
     advance(tokens);
-    return 1;
+    return true;
   }
 
   if (tokens[current_token_index].token_type == OPCODE_SUB) {
@@ -1020,14 +1557,14 @@ int Parser::parse_addOrSubOpcode(std::vector<Token> tokens, Node &node) {
     node.add(child_node);
     child_node.reset();
     advance(tokens);
-    return 1;
+    return true;
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_addModifier(std::vector<Token> tokens, Node &node) {
-  int success = 0;
+bool Parser::parse_addModifier(std::vector<Token> tokens, Node &node) {
+  bool success = false;
   int current_token_index_placeholder = current_token_index;
   node.set_type(addModifier);
   Node child_node;
@@ -1038,24 +1575,24 @@ int Parser::parse_addModifier(std::vector<Token> tokens, Node &node) {
     node.add(child_node);
     child_node.reset();
     advance(tokens);
-    return 1;
+    return true;
   }
 
   success = parse_optionalFloatingRoundNumber(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
 
     success = parse_optionalFtz(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
 
       success = parse_optionalSaturate(tokens, child_node);
-      if (success == 1) {
+      if (success) {
         node.add(child_node);
         child_node.reset();
-        return 1;
+        return true;
       } else {
         child_node.reset();
         node.reset();
@@ -1071,10 +1608,10 @@ int Parser::parse_addModifier(std::vector<Token> tokens, Node &node) {
     node.reset();
     current_token_index = current_token_index_placeholder;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_dataType(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_dataType(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(dataType);
   Node child_node;
@@ -1099,41 +1636,41 @@ int Parser::parse_dataType(std::vector<Token> tokens, Node &node) {
     node.add(child_node);
     child_node.reset();
     advance(tokens);
-    return 1;
+    return true;
   }
-  return 0;
+  return false;
 }
 
-int Parser::parse_operand(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_operand(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(operand);
   Node child_node;
-  int success = 0;
+  bool success = false;
 
   success = parse_constantOperand(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
 
   success = parse_nonLabelOperand(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
-    return 1;
+    return true;
   } else {
     child_node.reset();
     current_token_index = current_token_index_placeholder;
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_constantOperand(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_constantOperand(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(operand);
   Node child_node;
@@ -1148,28 +1685,28 @@ int Parser::parse_constantOperand(std::vector<Token> tokens, Node &node) {
     node.add(child_node);
     child_node.reset();
     advance(tokens);
-    return 1;
+    return true;
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_nonLabelOperand(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_nonLabelOperand(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(operand);
   Node child_node;
-  int success = 0;
+  bool success = false;
 
   success = parse_identifier(tokens, child_node);
-  if (success == 1) {
+  if (success) {
     node.add(child_node);
     child_node.reset();
 
     success = parse_optionalVectorIndex(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
-      return 1;
+      return true;
     } else {
       node.reset();
       child_node.reset();
@@ -1190,10 +1727,10 @@ int Parser::parse_nonLabelOperand(std::vector<Token> tokens, Node &node) {
     advance(tokens);
 
     success = parse_identifier(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
-      return 1;
+      return true;
     } else {
       node.reset();
       child_node.reset();
@@ -1206,73 +1743,44 @@ int Parser::parse_nonLabelOperand(std::vector<Token> tokens, Node &node) {
     current_token_index = current_token_index_placeholder;
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_optionalFloatingRoundNumber(std::vector<Token> tokens,
+bool Parser::parse_optionalFloatingRoundNumber(std::vector<Token> tokens,
                                               Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(optionalFloatingRoundNumber);
   Node child_node;
-  int success = 0;
+  bool success = false;
 
   // NOT YET IMPLEMENTED
 
-  return 1;
+  return true;
 }
 
-int Parser::parse_optionalFtz(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_optionalFtz(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(optionalFtz);
   Node child_node;
-  int success = 0;
+  bool success = false;
 
   // NOT YET IMPLEMENTED
 
-  return 1;
+  return true;
 }
 
-int Parser::parse_optionalSaturate(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_optionalSaturate(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(optionalSaturate);
   Node child_node;
-  int success = 0;
+  bool success = false;
 
   // NOT YET IMPLEMENTED
 
-  return 1;
+  return true;
 }
 
-int Parser::parse_identifier(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(identifier);
-  Node child_node;
-  int success = 0;
-
-  if (tokens[current_token_index].token_type == TOKEN_UNDERSCORE ||
-      tokens[current_token_index].token_type == TOKEN_IDENTIFIER) {
-    child_node.set_type(leaf);
-    child_node.set_token(tokens[current_token_index]);
-    node.add(child_node);
-    child_node.reset();
-    advance(tokens);
-    return 1;
-  }
-
-  success = parse_opcode(tokens, child_node);
-  if (success == 1) {
-    node.add(child_node);
-    child_node.reset();
-  } else {
-    current_token_index = current_token_index_placeholder;
-    child_node.reset();
-    node.reset();
-  }
-
-  return 0;
-}
-
-int Parser::parse_opcode(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_opcode(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(opcode);
   Node child_node;
@@ -1352,13 +1860,13 @@ int Parser::parse_opcode(std::vector<Token> tokens, Node &node) {
     node.add(child_node);
     child_node.reset();
     advance(tokens);
-    return 1;
+    return true;
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_floatRoundingToken(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_floatRoundingToken(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(floatingRoundingToken);
   Node child_node;
@@ -1372,123 +1880,406 @@ int Parser::parse_floatRoundingToken(std::vector<Token> tokens, Node &node) {
     node.add(child_node);
     child_node.reset();
     advance(tokens);
-    return 1;
+    return true;
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_entryName(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_entryName(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(entryName);
   Node child_node;
 
   // Not Yet Implemented
-  return 0;
+  return false;
 }
 
-int Parser::parse_optionalArgumentList(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_optionalArgumentList(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(optionalArgumentList);
   Node child_node;
 
   // Not Yet Implemented
 
-  return 0;
+  return true;
 }
 
-int Parser::parse_performanceDirectives(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_performanceDirectives(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(performanceDirectives);
   Node child_node;
 
   // Not Yet Implemented
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_optionalMetadata(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_optionalMetadata(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(optionalMetadata);
   Node child_node;
 
   // Not Yet Implemented
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_guard(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_guard(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(guard);
   Node child_node;
 
   // Not Yet Implemented
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_uninitializable(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_uninitializable(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(uninitializable);
   Node child_node;
+  bool success = false;
 
-  // Not Yet Implemented
+  success = parse_externOrVisible(tokens, child_node);
+  if (success) {
+    node.add(child_node);
+    child_node.reset();
 
-  return 0;
+    success = parse_uninitializableAddress(tokens, child_node);
+    if(success) {
+      node.add(child_node);
+      child_node.reset();
+      return true;
+    } else {
+      node.reset();
+      child_node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    child_node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+
+  return false;
 }
 
-int Parser::parse_arrayDimensions(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_initializable(std::vector<Token> tokens, Node &node) {
+   int current_token_index_placeholder = current_token_index;
+   node.set_type(initializable);
+   Node child_node;
+   bool success = false;
+   std::vector<Node_Type> grammer_sequence{externOrVisible, initializableAddress};
+   success = parse_grammer_sequence(grammer_sequence, tokens, child_node);
+   return success;
+}
+
+// bool Parser::parse_initializable(std::vector<Token> tokens, Node &node) {
+//   int current_token_index_placeholder = current_token_index;
+//   node.set_type(initializable);
+//   Node child_node;
+//   bool success = false;
+
+//   success = parse_externOrVisible(tokens, child_node);
+//   if (success) {
+//     node.add(child_node);
+//     child_node.reset();
+
+//     success = parse_initializableAddress(tokens, child_node);
+//     if(success) {
+//       node.add(child_node);
+//       child_node.reset();
+//       return true;
+//     } else {
+//       node.reset();
+//       child_node.reset();
+//       current_token_index = current_token_index_placeholder;
+//     }
+//   } else {
+//     node.reset();
+//     child_node.reset();
+//     current_token_index = current_token_index_placeholder;
+//   }
+
+//   return false;
+// }
+
+bool Parser::parse_arrayDimensions(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(arrayDimensions);
   Node child_node;
+  bool success = false;
 
-  // Not Yet Implemented
+  success = parse_arrayDimensionSet(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    child_node.reset();
+  } else {
+    current_token_index = current_token_index_placeholder;
+  }
 
-  return 0;
+  return true;
 }
 
-int Parser::parse_returnTypeList(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_addressableVariablePrefix(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(addressableVariablePrefix);
+  Node child_node;
+  bool success = false;
+
+  success = parse_dataType(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    child_node.reset();
+    success = parse_statementVectorType(tokens, child_node);
+    if(success) {
+      node.add(child_node);
+      return true;
+    } else {
+      node.reset();
+      child_node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    child_node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+
+  success = parse_statementVectorType(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    child_node.reset();
+    success = parse_dataType(tokens, child_node);
+    if(success) {
+      node.add(child_node);
+      return true;
+    } else {
+      node.reset();
+      child_node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    child_node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+
+  success = parse_dataType(tokens, child_node);
+  if(success){
+    node.add(child_node);
+    return true;
+  }
+
+  success = parse_alignment(tokens, child_node);
+  if(success) {
+    node.add(child_node);
+    child_node.reset();
+     success = parse_dataType(tokens, child_node);
+    if(success) {
+      node.add(child_node);
+      child_node.reset();
+      success = parse_statementVectorType(tokens, child_node);
+      if(success) {
+        node.add(child_node);
+        return true;
+      } else {
+        node.reset();
+        child_node.reset();
+        current_token_index = current_token_index_placeholder;
+      }
+    } else {
+      node.reset();
+      child_node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    child_node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+
+  return false;
+}
+
+bool Parser::parse_statementVectorType(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(statementVectorType);
+  Node child_node;
+
+  if(tokens[current_token_index].token_type == TOKEN_V2 ||
+     tokens[current_token_index].token_type == TOKEN_V4) {
+      child_node.set_type(leaf);
+      child_node.set_token(tokens[current_token_index]);
+      node.add(child_node);
+      advance(tokens);
+      return true;
+     }
+  return false;
+
+}
+
+bool Parser::parse_alignment(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(alignment);
+  Node child_node;
+
+  if(tokens[current_token_index].token_type == TOKEN_ALIGN) {
+    child_node.set_type(leaf);
+    child_node.set_token(tokens[current_token_index]);
+    node.add(child_node);
+    advance(tokens);
+    child_node.reset();
+
+    if(tokens[current_token_index].token_type == TOKEN_DECIMAL_CONSTANT) {
+      child_node.set_type(leaf);
+      child_node.set_token(tokens[current_token_index]);
+      node.add(child_node);
+      advance(tokens);
+      return true;
+    } else {
+      node.reset();
+      current_token_index = current_token_index_placeholder;
+    }
+  } else {
+    node.reset();
+    current_token_index = current_token_index_placeholder;
+  }
+  return false;
+}
+
+bool Parser::parse_uninitializableAddress(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(uninitializableAddress);
+  Node child_node;
+
+  if (tokens[current_token_index].token_type == TOKEN_LOCAL ||
+      tokens[current_token_index].token_type == TOKEN_SHARED ||
+      tokens[current_token_index].token_type == TOKEN_PARAM) {
+        child_node.set_type(leaf);
+        child_node.set_token(tokens[current_token_index]);
+        node.add(child_node);
+        child_node.reset();
+        advance(tokens);
+        return true;
+      }
+
+  return false;
+}
+
+bool Parser::parse_initializableAddress(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(initializableAddress);
+  Node child_node;
+
+  if (tokens[current_token_index].token_type == TOKEN_CONST ||
+      tokens[current_token_index].token_type == TOKEN_GLOBAL) {
+        child_node.set_type(leaf);
+        child_node.set_token(tokens[current_token_index]);
+        node.add(child_node);
+        child_node.reset();
+        advance(tokens);
+        return true;
+      }
+
+  return false;
+}
+
+bool Parser::parse_returnTypeList(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(returnTypeList);
   Node child_node;
 
   // Not Yet Implemented
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_addressableVariablePrefix(std::vector<Token> tokens,
-                                            Node &node) {
+bool Parser::parse_optionalReturnArgument(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
-  node.set_type(addressableVariablePrefix);
+  node.set_type(optionalReturnArgument);
   Node child_node;
 
   // Not Yet Implemented
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_registerPrefix(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_argumentListBegin(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(argumentListBegin);
+  Node child_node;
+
+  if(tokens[current_token_index].token_type == TOKEN_OPENPARENTHESIS) {
+    child_node.set_type(leaf);
+    child_node.set_token(tokens[current_token_index]);
+    node.add(child_node);
+    advance(tokens);
+    return true;
+  }
+
+  return false;
+}
+
+bool Parser::parse_argumentListEnd(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(argumentListEnd);
+  Node child_node;
+
+  if(tokens[current_token_index].token_type == TOKEN_CLOSEPARENTHESIS) {
+    child_node.set_type(leaf);
+    child_node.set_token(tokens[current_token_index]);
+    node.add(child_node);
+    advance(tokens);
+    return true;
+  }
+
+  return false;
+}
+
+bool Parser::parse_registerPrefix(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(registerPrefix);
   Node child_node;
 
   // Not Yet Implemented
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_argumentTypeList(std::vector<Token> tokens, Node &node) {
+
+bool Parser::parse_identifierList(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(identifierList);
+  Node child_node;
+
+  // Not Yet Implemented
+
+  return false;
+}
+
+bool Parser::parse_arrayDimensionSet(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(arrayDimensionSet);
+  Node child_node;
+
+  // Not Yet Implemented
+
+  return false;
+}
+
+bool Parser::parse_argumentTypeList(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(argumentTypeList);
   Node child_node;
 
   // Not Yet Implemented
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_registerIdentifierList(std::vector<Token> tokens,
+bool Parser::parse_registerIdentifierList(std::vector<Token> tokens,
                                          Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(registerIdentifierList);
@@ -1496,40 +2287,30 @@ int Parser::parse_registerIdentifierList(std::vector<Token> tokens,
 
   // Not Yet Implemented
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_identifierList(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(identifierList);
-  Node child_node;
-
-  // Not Yet Implemented
-
-  return 0;
-}
-
-int Parser::parse_optionalVectorIndex(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_optionalVectorIndex(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(optionalVectorIndex);
   Node child_node;
 
   // Not Yet Implemented
 
-  return 1;
+  return true;
 }
 
-int Parser::parse_targetElementList(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_targetElementList(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(targetElementList);
   Node child_node;
-  int success = 0;
+  bool success = false;
 
   bool end_of_list = false;
   while (!end_of_list) {
     int current_token_index_checkpoint0 = current_token_index;
     success = parse_targetElement(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
 
@@ -1549,24 +2330,24 @@ int Parser::parse_targetElementList(std::vector<Token> tokens, Node &node) {
       current_token_index = current_token_index_checkpoint0;
     }
   }
-  return 1;
+  return true;
 }
 
-int Parser::parse_targetElement(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_targetElement(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(targetElement);
   Node child_node;
 
   // Not Yet Implemented
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_target(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_target(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(target);
   Node child_node;
-  int success = 0;
+  bool success = false;
 
   if (tokens[current_token_index].token_type == TOKEN_TARGET) {
     child_node.set_type(leaf);
@@ -1575,10 +2356,10 @@ int Parser::parse_target(std::vector<Token> tokens, Node &node) {
     child_node.reset();
 
     success = parse_targetElementList(tokens, child_node);
-    if (success == 1) {
+    if (success) {
       node.add(child_node);
       child_node.reset();
-      return 1;
+      return true;
     } else {
       child_node.reset();
       node.reset();
@@ -1586,10 +2367,10 @@ int Parser::parse_target(std::vector<Token> tokens, Node &node) {
     }
   }
 
-  return 0;
+  return false;
 }
 
-int Parser::parse_externOrVisible(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_externOrVisible(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(externOrVisible);
   Node child_node;
@@ -1601,9 +2382,10 @@ int Parser::parse_externOrVisible(std::vector<Token> tokens, Node &node) {
     child_node.set_token(tokens[current_token_index]);
     node.add(child_node);
     child_node.reset();
-    return 1;
+    advance(tokens);
+    return true;
   }
-  return 0;
+  return false;
 }
 
 } // namespace ptx_parser

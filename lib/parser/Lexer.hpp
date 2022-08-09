@@ -4,11 +4,13 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
-namespace ptx_parser {
+namespace ptx {
 
-enum Token_Type {
+enum Node_Type {
+  // Tokens
   OPCODE_ADD,
   OPCODE_SUB,
   OPCODE_COS,
@@ -105,7 +107,7 @@ enum Token_Type {
   TOKEN_UNRECOGNIZED,
   TOKEN_OPENBRACE,
   TOKEN_CLOSEBRACE,
-  TOKRN_REG,
+  TOKEN_REG,
   TOKEN_LOC,
   TOKEN_LABEL,
   TOKEN_PRAGMA,
@@ -126,11 +128,93 @@ enum Token_Type {
   TOKEN_WEAK,
   TOKEN_VISIBLE,
   TOKEN_EXTERN,
+  TOKEN_LOCAL,
+  TOKEN_SHARED,
+  TOKEN_PARAM,
+  TOKEN_CONST,
+  TOKEN_GLOBAL,
+  TOKEN_FUNCTION,
+  TOKEN_ALIGN,
+  TOKEN_V2,
+  TOKEN_V4,
+  TOKEN_OPENPARENTHESIS,
+  TOKEN_CLOSEPARENTHESIS,
+  // empty node type
+  noneNode,
+  // leaf mode
+  leaf,
+  // grammer nodes
+  statement,
+  initializableDeclaration,
+  nonEntryStatement,
+  version,
+  closeBrace,
+  openBrace,
+  entry,
+  functionBody,
+  functionDeclaration,
+  entryDeclaration,
+  entryStatements,
+  completeEntryStatement,
+  uninitializableDeclaration,
+  entryStatement,
+  registerDeclaration,
+  location,
+  pragma,
+  callprototype,
+  calltargets,
+  instruction,
+  addOrSub,
+  addModifier,
+  addOrSubOpcode,
+  dataType,
+  operand,
+  optionalFloatingRoundNumber,
+  optionalFtz,
+  optionalSaturate,
+  identifier,
+  opcode,
+  floatingRoundingToken,
+  entryName,
+  optionalArgumentList,
+  performanceDirectives,
+  optionalMetadata,
+  guard,
+  uninitializable,
+  arrayDimensions,
+  returnTypeList,
+  addressableVariablePrefix,
+  registerPrefix,
+  argumentTypeList,
+  registerIdentifierList,
+  identifierList,
+  optionalVectorIndex,
+  target,
+  targetElementList,
+  targetElement,
+  externOrVisible,
+  uninitializableAddress,
+  initializableAddress,
+  initializable,
+  functionBegin,
+  functionBodyDefinition,
+  functionName,
+  optionalSemicolon,
+  argumentList,
+  argumentListBody,
+  argumentListBegin,
+  argumentListEnd,
+  argumentDeclaration,
+  parameter,
+  alignment,
+  statementVectorType,
+  optionalReturnArgument,
+  arrayDimensionSet,
 };
 
 class Token {
 public:
-  enum Token_Type token_type;
+  enum Node_Type token_type;
   std::string value;
   std::string text;
 
