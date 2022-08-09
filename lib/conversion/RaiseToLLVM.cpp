@@ -143,9 +143,27 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
           } else {
             dst = Builder.CreateAlloca(src->getType());
           }
+          symbolTable.insert({dstOperandName, dst});
         }
-        Value *result = Builder.CreateStore(src, dst);
-        symbolTable.insert({dstOperandName, result});
+        Builder.CreateStore(src, dst);
+      }
+      if (utils::isLoadInstruction(tokens)) {
+        if (utils::getStateSpace(tokens) == "param")
+          continue;
+        auto srcName = utils::getAddress(instr.getOperand(1).getName());
+        Value *src = symbolTable.lookup(srcName);
+        if (!src)
+          continue;
+        auto instrType = utils::getInstrType(tokens);
+        Value *result;
+        if (instrType == "u64") {
+          result = Builder.CreateLoad(Builder.getPtrTy(), src);
+        } else if (instrType == "u32") {
+          result = Builder.CreateLoad(Builder.getInt32Ty(), src);
+        } else if (instrType == "f32") {
+          result = Builder.CreateLoad(Builder.getFloatTy(), src);
+        }
+        symbolTable.insert({instr.getOperand(0).getName(), result});
       }
       if (utils::isBinaryInstruction(tokens)) {
         Value *a = symbolTable.lookup(instr.getOperand(1).getName());
@@ -156,6 +174,51 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
         if (!b) {
           continue;
         }
+
+        // Check if this can be mapped to a GEP
+        // Check for address calculation, followed by use in load
+        // Alternatively address calculation,
+        auto resName = instr.getOperand(0).getName();
+        auto ptxval = body.lookup(resName);
+        if (ptxval) {
+          auto numUses = (*ptxval)->getNumUses();
+          // TODO: This can be relaxed
+          if (numUses == 1) {
+            auto nextInst = (*ptxval)->getUses()[0];
+            auto nextInstTokens = utils::tokenize(nextInst->getName());
+            auto instrType = utils::getInstrType(nextInstTokens);
+            if (utils::isLoadInstruction(nextInstTokens)) {
+              // TODO: Add support for more types
+              if (instrType == "f32") {
+                Value *result = Builder.CreateGEP(Builder.getFloatTy(), a, b);
+                symbolTable.insert({resName, result});
+                continue;
+              }
+            }
+            // Here check that we are storing into the address
+            if (utils::isStoreInstruction(nextInstTokens)) {
+              auto storeName = utils::getAddress(nextInst->getOperand(0).getName());
+              if (storeName == resName) {
+                if (instrType == "f32") {
+                  Value *result = Builder.CreateGEP(Builder.getFloatTy(), a, b);
+                  symbolTable.insert({resName, result});
+                  continue;
+                }
+              }
+            }
+          }
+        }
+
+        // Check if floating point add
+        // TODO: Handle rounding modes
+        if (utils::getInstrType(tokens) == "f32") {
+          if (utils::isAddInstruction(tokens)) {
+            Value *result = Builder.CreateFAdd(a, b);
+            symbolTable.insert({instr.getOperand(0).getName(), result});
+          }
+          continue;
+        }
+
         // If operands are 32-bit and a .lo is requested, we can just emit an llvm mul
         auto checkBitWidth = [] (Value *a) {
           return (a->getType()->isIntegerTy() && a->getType()->getIntegerBitWidth() == 32);
@@ -172,6 +235,22 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
             result = Builder.CreateAdd(a, b);
         }
         symbolTable.insert({instr.getOperand(0).getName(), result});
+      }
+      if (utils::isShlInstruction(tokens)) {
+        Value *a = symbolTable.lookup(instr.getOperand(1).getName());
+        if (!a) {
+          continue;
+        }
+        auto type = a->getType();
+        if (type->isIntegerTy()) {
+          auto instrWidth = utils::getInstrBitWidth(tokens);
+          if (instrWidth > type->getIntegerBitWidth()) {
+            if (instrWidth == 64) {
+              Value *result = Builder.CreateZExt(a, Builder.getInt64Ty());
+              symbolTable.insert({instr.getOperand(0).getName(), result});
+            }
+          }
+        }
       }
     }
   }

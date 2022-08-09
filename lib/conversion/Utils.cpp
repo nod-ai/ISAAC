@@ -1,5 +1,6 @@
 #include "conversion/Utils.h"
 #include <cassert>
+#include <sstream>
 
 namespace utils {
 
@@ -40,6 +41,14 @@ std::string_view getInstrType(std::vector<std::string_view> &tokens) {
   return tokens.back();
 }
 
+unsigned int getInstrBitWidth(std::vector<std::string_view> &tokens) {
+  std::string s(utils::getInstrType(tokens).substr(1));
+  std::stringstream ss(s);
+  unsigned int instrWidth;
+  ss >> instrWidth;
+  return instrWidth;
+}
+
 std::string_view getInstrMode(std::vector<std::string_view> &tokens) {
   // For instructions with 3 parts, return the middle token
   if (tokens.size() == 3)
@@ -59,6 +68,10 @@ bool isAddInstruction(std::vector<std::string_view> &tokens) {
   return getPrefix(tokens) == "add";
 }
 
+bool isShlInstruction(std::vector<std::string_view> &tokens) {
+  return getPrefix(tokens) == "shl";
+}
+
 bool isLoadInstruction(std::vector<std::string_view> &tokens) {
   return getPrefix(tokens) == "ld";
 }
@@ -73,7 +86,7 @@ bool isConvertInstruction(std::vector<std::string_view> &tokens) {
 
 bool isBinaryInstruction(std::vector<std::string_view> &tokens) {
   auto prefix = getPrefix(tokens);
-  return ((prefix == "mul") || (prefix == "add") || (prefix == "shl"));
+  return ((prefix == "mul") || (prefix == "add"));
 }
 
 std::string_view getAddress(std::string_view str) {
