@@ -1,11 +1,12 @@
 #pragma once
 
 #include "ir/Value.h"
-#include <unordered_map>
+#include <memory>
+#include <iterator>
+#include <optional>
 #include <string>
 #include <string_view>
-#include <optional>
-#include <iterator>
+#include <unordered_map>
 
 /**
  * @class SymbolTable
@@ -14,8 +15,8 @@
  */
 class PTXSymbolTable {
   std::unordered_map<std::string_view, std::shared_ptr<PTXValue>> table;
-public:
 
+public:
   PTXSymbolTable() {}
   ~PTXSymbolTable() {}
 
@@ -25,7 +26,8 @@ public:
    *
    * @param symbol : Symbol to be searched
    */
-  std::optional<std::shared_ptr<PTXValue>> lookup(std::string_view symbol) const {
+  std::optional<std::shared_ptr<PTXValue>>
+  lookup(std::string_view symbol) const {
     if (table.contains(symbol)) {
       return table.at(symbol);
     }
@@ -43,14 +45,10 @@ public:
     table.emplace(std::make_pair(symbol, value));
   }
 
-
   /**
    * @brief Returns the size of the symbol table.
    *
    * @return
    */
-  size_t size() const {
-    return table.size();
-  }
-
+  size_t size() const { return table.size(); }
 };

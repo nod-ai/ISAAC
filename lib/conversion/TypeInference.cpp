@@ -1,10 +1,10 @@
 #include "conversion/TypeInference.h"
 #include "conversion/Utils.h"
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 
-
-void PTXTypeInference::constrainType(std::string_view name, std::string_view type) {
+void PTXTypeInference::constrainType(std::string_view name,
+                                     std::string_view type) {
   if (typeMap.count(name)) {
     assert(name + "already present in type map!\n");
   }
@@ -12,10 +12,14 @@ void PTXTypeInference::constrainType(std::string_view name, std::string_view typ
 }
 
 static std::string_view getPointerType(std::string_view str) {
-  if (str == "f32") return "ptr_f32";
-  if (str == "ptr_f32") return "ptr_ptr_f32";
-  if (str == "u32") return "ptr_u32";
-  if (str == "u64") return "ptr_u64";
+  if (str == "f32")
+    return "ptr_f32";
+  if (str == "ptr_f32")
+    return "ptr_ptr_f32";
+  if (str == "u32")
+    return "ptr_u32";
+  if (str == "u64")
+    return "ptr_u64";
   assert("Not supported type" + str);
   return "";
 }
@@ -27,7 +31,8 @@ static std::string_view getElementType(std::string_view str) {
 static void propagateOperandTypes(std::vector<std::string_view> &tokens,
                                   std::vector<std::string_view> &operandTypes,
                                   std::vector<size_t> &constrainedIndices) {
-  if (constrainedIndices.empty()) return;
+  if (constrainedIndices.empty())
+    return;
   if (utils::isLoadInstruction(tokens)) {
     if (constrainedIndices[0] == 0) {
       operandTypes[1] = getPointerType(operandTypes[0]);
@@ -42,7 +47,8 @@ static void propagateOperandTypes(std::vector<std::string_view> &tokens,
       operandTypes[0] = getPointerType(operandTypes[1]);
     }
   }
-  if (utils::isConvertInstruction(tokens) || utils::isBinaryInstruction(tokens)) {
+  if (utils::isConvertInstruction(tokens) ||
+      utils::isBinaryInstruction(tokens)) {
     // Assumes all types are identical
     for (size_t i = 0; i < operandTypes.size(); i++) {
       operandTypes[i] = operandTypes[constrainedIndices[0]];
@@ -52,7 +58,7 @@ static void propagateOperandTypes(std::vector<std::string_view> &tokens,
 
 void PTXTypeInference::applyConstraints(PTXInstruction &instr) {
   auto tokens = utils::tokenize(instr.getName());
-  std::function<void (size_t, std::string_view)> typeConstraint;
+  std::function<void(size_t, std::string_view)> typeConstraint;
   std::string_view instrType = utils::getInstrType(tokens);
   std::vector<std::string_view> operandTypes;
   operandTypes.resize(instr.getNumOperands(), std::string_view());
@@ -71,8 +77,8 @@ void PTXTypeInference::applyConstraints(PTXInstruction &instr) {
     size_t pointerIndex = utils::isLoadInstruction(tokens) ? 1 : 0;
     size_t nonPointerIndex = pointerIndex == 0 ? 1 : 0;
     if (constrainedIndices.empty()) {
-      typeConstraint = [instrType, pointerIndex, nonPointerIndex, this]
-                       (size_t index, std::string_view name) {
+      typeConstraint = [instrType, pointerIndex, nonPointerIndex,
+                        this](size_t index, std::string_view name) {
         if (index == nonPointerIndex) {
           constrainType(name, instrType);
         }
@@ -81,21 +87,22 @@ void PTXTypeInference::applyConstraints(PTXInstruction &instr) {
         }
       };
     } else {
-      typeConstraint = [pointerIndex, nonPointerIndex, operandTypes, this]
-                       (size_t index, std::string_view name) {
+      typeConstraint = [pointerIndex, nonPointerIndex, operandTypes,
+                        this](size_t index, std::string_view name) {
         if (index == nonPointerIndex)
-            constrainType(name, operandTypes[index]);
+          constrainType(name, operandTypes[index]);
         if (index == pointerIndex)
-            constrainType(utils::getAddress(name), operandTypes[index]);
+          constrainType(utils::getAddress(name), operandTypes[index]);
       };
     }
   }
-  if (utils::isConvertInstruction(tokens) || utils::isBinaryInstruction(tokens)) {
+  if (utils::isConvertInstruction(tokens) ||
+      utils::isBinaryInstruction(tokens)) {
     if (!constrainedIndices.empty()) {
       instrType = operandTypes[constrainedIndices[0]];
     }
     typeConstraint = [instrType, this](size_t index, std::string_view name) {
-        constrainType(name, instrType);
+      constrainType(name, instrType);
     };
   }
   if (typeConstraint) {

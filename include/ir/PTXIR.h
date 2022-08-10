@@ -1,11 +1,5 @@
 #pragma once
 
-#include <memory>
-#include <vector>
-#include <optional>
-#include <string_view>
-#include <string>
-#include "ir/Value.h"
 #include "ir/SymbolTable.h"
 
 /**
@@ -16,8 +10,7 @@
 class PTXOperand {
 public:
   PTXOperand() = delete;
-  PTXOperand(std::string_view name_) :
-    name(name_) {}
+  PTXOperand(std::string_view name_) : name(name_) {}
   ~PTXOperand() {}
   std::string_view getName() const { return name; }
 
@@ -33,24 +26,18 @@ private:
 class PTXInstruction {
   std::string_view name;
   std::vector<PTXOperand> operands;
+
 public:
   PTXInstruction() = delete;
-  PTXInstruction(std::string_view name_, const std::vector<PTXOperand> &operands_) :
-    name(name_), operands(operands_) {}
+  PTXInstruction(std::string_view name_,
+                 const std::vector<PTXOperand> &operands_)
+      : name(name_), operands(operands_) {}
   ~PTXInstruction() {}
   std::string_view getName() const { return name; }
-  size_t getNumOperands() const {
-    return operands.size();
-  }
-  PTXOperand getOperand(size_t idx) {
-    return operands[idx];
-  }
-  std::vector<PTXOperand> & getOperands() {
-    return operands;
-  }
-  std::string_view getOperandType() {
-    return name.substr(name.size() - 3);
-  }
+  size_t getNumOperands() const { return operands.size(); }
+  PTXOperand getOperand(size_t idx) { return operands[idx]; }
+  std::vector<PTXOperand> &getOperands() { return operands; }
+  std::string_view getOperandType() { return name.substr(name.size() - 3); }
   std::string print() {
     std::string str = std::string(name) + " ";
     for (size_t i = 0; i < operands.size() - 1; i++) {
@@ -61,7 +48,6 @@ public:
   }
 };
 
-
 /**
  * @class PTXDirective
  * @brief A PTX Directive starts with a '.'
@@ -69,6 +55,7 @@ public:
  */
 class PTXDirective {
   std::string_view name;
+
 public:
   PTXDirective() = delete;
 };
@@ -83,25 +70,21 @@ class PTXBasicBlock {
   std::vector<PTXInstruction> instructions;
   PTXSymbolTable *symbolTable;
   void computeDefUseChain(PTXInstruction &inst);
+
 public:
   using Ptr = std::unique_ptr<PTXBasicBlock>;
   PTXBasicBlock() {}
   void processInstruction(PTXInstruction &inst);
-  void push_back(PTXInstruction &instr) {
-    instructions.push_back(instr);
-  }
+  void push_back(PTXInstruction &instr) { instructions.push_back(instr); }
   void setSymbolTable(PTXSymbolTable *symbolTable_) {
     symbolTable = symbolTable_;
   }
   void computeDefUseChain();
-  size_t numInstructions() const {
-    return instructions.size();
-  }
+  size_t numInstructions() const { return instructions.size(); }
   const std::vector<PTXInstruction> &getInstructions() const {
     return instructions;
   }
 };
-
 
 /**
  * @class Graph
@@ -111,6 +94,7 @@ public:
 class PTXControlFlowGraph {
   std::vector<PTXBasicBlock> blocks;
   PTXSymbolTable symbolTable;
+
 public:
   PTXControlFlowGraph() {}
   void push_back(PTXBasicBlock &block) {
@@ -118,17 +102,12 @@ public:
     blocks.push_back(block);
   }
   void computeDefUseChain();
-  const std::vector<PTXBasicBlock> &getBlocks() const {
-    return blocks;
-  }
+  const std::vector<PTXBasicBlock> &getBlocks() const { return blocks; }
   std::optional<std::shared_ptr<PTXValue>> lookup(std::string_view symbol) {
     return symbolTable.lookup(symbol);
   }
-  PTXSymbolTable &getSymbolTable() {
-    return symbolTable;
-  }
+  PTXSymbolTable &getSymbolTable() { return symbolTable; }
 };
-
 
 /**
  * @class PTXKernel
@@ -140,8 +119,10 @@ class PTXKernel {
   std::string_view name;
   std::vector<std::shared_ptr<PTXValue>> arguments;
   PTXControlFlowGraph body;
+
 public:
-  PTXKernel(std::string_view name_, std::vector<std::shared_ptr<PTXValue>> &arguments_,
+  PTXKernel(std::string_view name_,
+            std::vector<std::shared_ptr<PTXValue>> &arguments_,
             PTXControlFlowGraph &body_);
   std::string_view getName() const { return name; }
   PTXControlFlowGraph &getBody() { return body; }
@@ -149,7 +130,6 @@ public:
   size_t numArguments() const { return arguments.size(); }
   std::shared_ptr<PTXValue> &getArgument(size_t i) { return arguments.at(i); }
 };
-
 
 /**
  * @class PTXProgram
@@ -160,13 +140,10 @@ public:
 class PTXProgram {
   std::vector<PTXKernel> kernels;
   std::string_view name;
+
 public:
   PTXProgram(std::string_view name_) : name(name_) {}
-  void push_back(PTXKernel &kernel) {
-    kernels.push_back(kernel);
-  }
-  const std::vector<PTXKernel> &getKernels() const {
-    return kernels;
-  }
+  void push_back(PTXKernel &kernel) { kernels.push_back(kernel); }
+  const std::vector<PTXKernel> &getKernels() const { return kernels; }
   std::string_view getName() const { return name; }
 };

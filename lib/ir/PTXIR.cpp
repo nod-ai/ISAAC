@@ -2,9 +2,10 @@
 #include "conversion/Utils.h"
 #include <iostream>
 
-PTXKernel::PTXKernel(std::string_view name_, std::vector<std::shared_ptr<PTXValue>> &arguments_,
-          PTXControlFlowGraph &body_) :
-         name(name_), arguments(arguments_), body(body_) {}
+PTXKernel::PTXKernel(std::string_view name_,
+                     std::vector<std::shared_ptr<PTXValue>> &arguments_,
+                     PTXControlFlowGraph &body_)
+    : name(name_), arguments(arguments_), body(body_) {}
 
 void PTXControlFlowGraph::computeDefUseChain() {
   for (auto &block : blocks) {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <string_view>
+#include <vector>
 
 namespace utils {
 
@@ -23,4 +23,4 @@ std::string_view getInstrMode(std::vector<std::string_view> &tokens);
 bool isAddInstruction(std::vector<std::string_view> &tokens);
 unsigned int getInstrBitWidth(std::vector<std::string_view> &tokens);
 
-}
+} // namespace utils

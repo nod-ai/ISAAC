@@ -14,7 +14,7 @@ std::vector<std::string_view> tokenize(std::string_view inst) {
       begin = end + 1;
     }
     if (i == inst.size() - 1) {
-      tokens.push_back(inst.substr(begin, inst.size() -  begin));
+      tokens.push_back(inst.substr(begin, inst.size() - begin));
     }
   }
   return tokens;
@@ -26,9 +26,8 @@ std::string_view getPrefix(std::vector<std::string_view> &tokens) {
 
 std::string_view getStateSpace(std::vector<std::string_view> &tokens) {
   assert(tokens.size() >= 2);
-  std::vector<std::string_view> spaces{
-    "param", "global", "local", "shared", "const", "sreg", "reg"
-  };
+  std::vector<std::string_view> spaces{"param", "global", "local", "shared",
+                                       "const", "sreg",   "reg"};
   for (auto space : spaces) {
     if (tokens[1] == space)
       return space;
@@ -97,4 +96,4 @@ bool isDereference(std::string_view str) {
   return (str[0] == '[') && (str.back() == ']');
 }
 
-}
+} // namespace utils

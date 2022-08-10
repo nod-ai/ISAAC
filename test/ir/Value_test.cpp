@@ -1,7 +1,4 @@
-#include "gtest/gtest.h"
 #include "ir/Value.h"
+#include "gtest/gtest.h"
 
-TEST(ValueTest, CreateValue) {
-  EXPECT_NO_THROW(PTXValue("a", PTXType("i8")));
-}
-
+TEST(ValueTest, CreateValue) { EXPECT_NO_THROW(PTXValue("a", PTXType("i8"))); }

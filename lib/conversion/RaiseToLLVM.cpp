@@ -7,12 +7,14 @@
 
 using namespace llvm;
 
-PTXToLLVMConverter::PTXToLLVMConverter(PTXProgram &program_, LLVMContext &context_) : context(context_), program(program_) {
-    module = std::make_unique<Module>(program.getName(), context);
-    // TODO: Do we need to hardcode these values or can they be deduced from PTX?
-    module->setDataLayout("e-i64:64-i128:128-v16:16-v32:32-n16:32:64");
-    module->setTargetTriple("nvptx-nvidia-cuda");
-    typeInferrer = std::make_unique<PTXTypeInference>(context);
+PTXToLLVMConverter::PTXToLLVMConverter(PTXProgram &program_,
+                                       LLVMContext &context_)
+    : context(context_), program(program_) {
+  module = std::make_unique<Module>(program.getName(), context);
+  // TODO: Do we need to hardcode these values or can they be deduced from PTX?
+  module->setDataLayout("e-i64:64-i128:128-v16:16-v32:32-n16:32:64");
+  module->setTargetTriple("nvptx-nvidia-cuda");
+  typeInferrer = std::make_unique<PTXTypeInference>(context);
 }
 
 llvm::Type *PTXToLLVMConverter::mapType(std::string_view str) {
@@ -24,21 +26,20 @@ llvm::Type *PTXToLLVMConverter::mapType(std::string_view str) {
   return nullptr;
 }
 
-
 std::unordered_map<std::string_view, std::string_view>
 PTXToLLVMConverter::propagateKernelArgs(PTXKernel &kernel) {
   auto body = kernel.getBody();
   std::unordered_map<std::string_view, std::string_view> clones;
-  std::function<void (std::string_view)> findClones;
+  std::function<void(std::string_view)> findClones;
   auto symbolTable = body.getSymbolTable();
 
-  findClones = [&clones, &body, &findClones] (std::string_view sym) {
+  findClones = [&clones, &body, &findClones](std::string_view sym) {
     auto value = body.lookup(sym);
     if (value) {
       for (auto op : (*value)->getUses()) {
         auto tokens = utils::tokenize(op->getName());
-        bool isLoadParam = utils::isLoadInstruction(tokens)
-                         && utils::getStateSpace(tokens) == "param";
+        bool isLoadParam = utils::isLoadInstruction(tokens) &&
+                           utils::getStateSpace(tokens) == "param";
         bool isConvert = utils::isConvertInstruction(tokens);
         if (isLoadParam || isConvert) {
           auto cloneName = op->getOperand(0).getName();
@@ -54,9 +55,10 @@ PTXToLLVMConverter::propagateKernelArgs(PTXKernel &kernel) {
   return clones;
 }
 
-Value *PTXToLLVMConverter::findSourceFromClones(std::string_view name,
-  std::unordered_map<std::string_view, std::string_view> &clones,
-  StringMap<Value *> &symbolTable) {
+Value *PTXToLLVMConverter::findSourceFromClones(
+    std::string_view name,
+    std::unordered_map<std::string_view, std::string_view> &clones,
+    StringMap<Value *> &symbolTable) {
   Value *val = symbolTable.lookup(name);
   if (val) {
     return val;
@@ -79,10 +81,8 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
     argTypes.push_back(mapType(argType));
   }
   auto FuncTy = FunctionType::get(retTy, argTypes, false);
-  Function *F = Function::Create(FuncTy,
-                                 Function::ExternalLinkage,
-                                 kernel.getName(),
-                                 module.get());
+  Function *F = Function::Create(FuncTy, Function::ExternalLinkage,
+                                 kernel.getName(), module.get());
   // TODO: Are all of these required?
   F->addFnAttr(Attribute::Convergent);
   F->addFnAttr(Attribute::MustProgress);
@@ -106,16 +106,19 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
   for (auto block : kernel.getBody().getBlocks()) {
     for (auto instr : block.getInstructions()) {
       auto tokens = utils::tokenize(instr.getName());
-      if (utils::isMoveInstruction(tokens))  {
+      if (utils::isMoveInstruction(tokens)) {
         Function *FF{nullptr};
         if (instr.getOperand(1).getName() == "%ctaid.x") {
-          FF = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_ctaid_x);
+          FF = llvm::Intrinsic::getDeclaration(
+              module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_ctaid_x);
         }
         if (instr.getOperand(1).getName() == "%ntid.x") {
-          FF = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_ntid_x);
+          FF = llvm::Intrinsic::getDeclaration(
+              module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_ntid_x);
         }
         if (instr.getOperand(1).getName() == "%tid.x") {
-          FF = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_tid_x);
+          FF = llvm::Intrinsic::getDeclaration(
+              module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_tid_x);
         }
         if (FF) {
           CallInst *call = Builder.CreateCall(FF);
@@ -127,19 +130,22 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
         Value *src = symbolTable.lookup(srcOperandName);
         bool useTypeInference{false};
         if (!src) {
-          // Source should already exist. If we can't find it, this might be a clone
+          // Source should already exist. If we can't find it, this might be a
+          // clone
           src = findSourceFromClones(srcOperandName, clones, symbolTable);
           if (!src) {
             continue;
           }
-          // If it is a clone, then we are dealing with kernel args. Rely on type inference
+          // If it is a clone, then we are dealing with kernel args. Rely on
+          // type inference
           useTypeInference = true;
         }
         auto dstOperandName = utils::getAddress(instr.getOperand(0).getName());
         Value *dst = symbolTable.lookup(dstOperandName);
         if (!dst) {
           if (useTypeInference) {
-            dst = Builder.CreateAlloca(mapType(typeInferrer->getType(dstOperandName)));
+            dst = Builder.CreateAlloca(
+                mapType(typeInferrer->getType(dstOperandName)));
           } else {
             dst = Builder.CreateAlloca(src->getType());
           }
@@ -197,7 +203,8 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
             }
             // Here check that we are storing into the address
             if (utils::isStoreInstruction(nextInstTokens)) {
-              auto storeName = utils::getAddress(nextInst->getOperand(0).getName());
+              auto storeName =
+                  utils::getAddress(nextInst->getOperand(0).getName());
               if (storeName == resName) {
                 if (instrType == "f32") {
                   Value *result = Builder.CreateGEP(Builder.getFloatTy(), a, b);
@@ -219,15 +226,19 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
           continue;
         }
 
-        // If operands are 32-bit and a .lo is requested, we can just emit an llvm mul
-        auto checkBitWidth = [] (Value *a) {
-          return (a->getType()->isIntegerTy() && a->getType()->getIntegerBitWidth() == 32);
+        // If operands are 32-bit and a .lo is requested, we can just emit an
+        // llvm mul
+        auto checkBitWidth = [](Value *a) {
+          return (a->getType()->isIntegerTy() &&
+                  a->getType()->getIntegerBitWidth() == 32);
         };
-        auto checkInstrType = utils::getInstrType(tokens) == "s32" || utils::getInstrType(tokens) == "u32";
+        auto checkInstrType = utils::getInstrType(tokens) == "s32" ||
+                              utils::getInstrType(tokens) == "u32";
         Value *result;
         if (utils::isMulInstruction(tokens)) {
           auto checkInstrMode = utils::getInstrMode(tokens) == "lo";
-          if (checkInstrMode && checkInstrType && checkBitWidth(a) && checkBitWidth(b))
+          if (checkInstrMode && checkInstrType && checkBitWidth(a) &&
+              checkBitWidth(b))
             result = Builder.CreateMul(a, b);
         }
         if (utils::isAddInstruction(tokens)) {
