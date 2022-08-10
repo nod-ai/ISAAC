@@ -7,9 +7,9 @@
 
 using namespace llvm;
 
-PTXToLLVMConverter::PTXToLLVMConverter(PTXProgram &program_,
-                                       LLVMContext &context_)
-    : context(context_), program(program_) {
+PTXToLLVMConverter::PTXToLLVMConverter(PTXProgram &Program,
+                                       LLVMContext &Context)
+    : context(Context), program(Program) {
   module = std::make_unique<Module>(program.getName(), context);
   // TODO: Do we need to hardcode these values or can they be deduced from PTX?
   module->setDataLayout("e-i64:64-i128:128-v16:16-v32:32-n16:32:64");
@@ -17,9 +17,9 @@ PTXToLLVMConverter::PTXToLLVMConverter(PTXProgram &program_,
   typeInferrer = std::make_unique<PTXTypeInference>(context);
 }
 
-llvm::Type *PTXToLLVMConverter::mapType(std::string_view str) {
+llvm::Type *PTXToLLVMConverter::mapType(std::string_view Str) {
   IRBuilder<> Builder(context);
-  if (str.find("ptr") != std::string::npos) {
+  if (Str.find("ptr") != std::string::npos) {
     return Builder.getPtrTy();
   }
   assert("Unimplemented");
@@ -27,62 +27,62 @@ llvm::Type *PTXToLLVMConverter::mapType(std::string_view str) {
 }
 
 std::unordered_map<std::string_view, std::string_view>
-PTXToLLVMConverter::propagateKernelArgs(PTXKernel &kernel) {
-  auto body = kernel.getBody();
-  std::unordered_map<std::string_view, std::string_view> clones;
-  std::function<void(std::string_view)> findClones;
-  auto symbolTable = body.getSymbolTable();
+PTXToLLVMConverter::propagateKernelArgs(PTXKernel &Kernel) {
+  auto Body = Kernel.getBody();
+  std::unordered_map<std::string_view, std::string_view> Clones;
+  std::function<void(std::string_view)> FindClones;
+  auto SymbolTable = Body.getSymbolTable();
 
-  findClones = [&clones, &body, &findClones](std::string_view sym) {
-    auto value = body.lookup(sym);
-    if (value) {
-      for (auto op : (*value)->getUses()) {
-        auto tokens = utils::tokenize(op->getName());
-        bool isLoadParam = utils::isLoadInstruction(tokens) &&
-                           utils::getStateSpace(tokens) == "param";
-        bool isConvert = utils::isConvertInstruction(tokens);
-        if (isLoadParam || isConvert) {
-          auto cloneName = op->getOperand(0).getName();
-          clones.insert({cloneName, sym});
-          findClones(cloneName);
+  FindClones = [&Clones, &Body, &FindClones](std::string_view Sym) {
+    auto Value = Body.lookup(Sym);
+    if (Value) {
+      for (auto Op : (*Value)->getUses()) {
+        auto Tokens = utils::tokenize(Op->getName());
+        bool IsLoadParam = utils::isLoadInstruction(Tokens) &&
+                           utils::getStateSpace(Tokens) == "param";
+        bool IsConvert = utils::isConvertInstruction(Tokens);
+        if (IsLoadParam || IsConvert) {
+          auto CloneName = Op->getOperand(0).getName();
+          Clones.insert({CloneName, Sym});
+          FindClones(CloneName);
         }
       }
     }
   };
-  for (auto arg : kernel.getArguments()) {
-    findClones(arg->getSymbol());
+  for (auto Arg : Kernel.getArguments()) {
+    FindClones(Arg->getSymbol());
   }
-  return clones;
+  return Clones;
 }
 
 Value *PTXToLLVMConverter::findSourceFromClones(
-    std::string_view name,
-    std::unordered_map<std::string_view, std::string_view> &clones,
-    StringMap<Value *> &symbolTable) {
-  Value *val = symbolTable.lookup(name);
-  if (val) {
-    return val;
+    std::string_view Name,
+    std::unordered_map<std::string_view, std::string_view> &Clones,
+    StringMap<Value *> &SymbolTable) {
+  Value *Val = SymbolTable.lookup(Name);
+  if (Val) {
+    return Val;
   }
-  for (const auto &[k, v] : clones) {
-    if (name == k) {
-      val = findSourceFromClones(v, clones, symbolTable);
+  for (const auto &[k, v] : Clones) {
+    if (Name == k) {
+      Val = findSourceFromClones(v, Clones, SymbolTable);
     }
   }
-  return val;
+  return Val;
 }
 
-void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
-  typeInferrer->doTypeInference(kernel.getBody());
-  auto retTy = Type::getVoidTy(context);
+void PTXToLLVMConverter::AddFunction(PTXKernel &Kernel) {
+  typeInferrer->doTypeInference(Kernel.getBody());
+  auto RetTy = Type::getVoidTy(context);
   // Require type annotations for all arguments
-  std::vector<llvm::Type *> argTypes;
-  for (auto arg : kernel.getArguments()) {
-    auto argType = typeInferrer->getType(arg->getSymbol());
-    argTypes.push_back(mapType(argType));
+  std::vector<llvm::Type *> ArgTypes;
+  for (auto Arg : Kernel.getArguments()) {
+    auto ArgType = typeInferrer->getType(Arg->getSymbol());
+    ArgTypes.push_back(mapType(ArgType));
   }
-  auto FuncTy = FunctionType::get(retTy, argTypes, false);
+  auto FuncTy = FunctionType::get(RetTy, ArgTypes, false);
   Function *F = Function::Create(FuncTy, Function::ExternalLinkage,
-                                 kernel.getName(), module.get());
+                                 Kernel.getName(), module.get());
   // TODO: Are all of these required?
   F->addFnAttr(Attribute::Convergent);
   F->addFnAttr(Attribute::MustProgress);
@@ -95,120 +95,120 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
   Builder.SetInsertPoint(BB);
 
   // Add kernel args to symbol table
-  auto body = kernel.getBody();
-  StringMap<Value *> symbolTable;
-  for (size_t i = 0; i < kernel.numArguments(); i++) {
-    symbolTable.insert({kernel.getArgument(i)->getSymbol(), F->getArg(i)});
+  auto Body = Kernel.getBody();
+  StringMap<Value *> SymbolTable;
+  for (size_t I = 0; I < Kernel.numArguments(); I++) {
+    SymbolTable.insert({Kernel.getArgument(I)->getSymbol(), F->getArg(I)});
   }
 
-  auto clones = propagateKernelArgs(kernel);
+  auto Clones = propagateKernelArgs(Kernel);
 
-  for (auto block : kernel.getBody().getBlocks()) {
-    for (auto instr : block.getInstructions()) {
-      auto tokens = utils::tokenize(instr.getName());
-      if (utils::isMoveInstruction(tokens)) {
+  for (auto Block : Kernel.getBody().getBlocks()) {
+    for (auto Instr : Block.getInstructions()) {
+      auto Tokens = utils::tokenize(Instr.getName());
+      if (utils::isMoveInstruction(Tokens)) {
         Function *FF{nullptr};
-        if (instr.getOperand(1).getName() == "%ctaid.x") {
+        if (Instr.getOperand(1).getName() == "%ctaid.x") {
           FF = llvm::Intrinsic::getDeclaration(
               module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_ctaid_x);
         }
-        if (instr.getOperand(1).getName() == "%ntid.x") {
+        if (Instr.getOperand(1).getName() == "%ntid.x") {
           FF = llvm::Intrinsic::getDeclaration(
               module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_ntid_x);
         }
-        if (instr.getOperand(1).getName() == "%tid.x") {
+        if (Instr.getOperand(1).getName() == "%tid.x") {
           FF = llvm::Intrinsic::getDeclaration(
               module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_tid_x);
         }
         if (FF) {
-          CallInst *call = Builder.CreateCall(FF);
-          symbolTable.insert({instr.getOperand(0).getName(), call});
+          CallInst *Call = Builder.CreateCall(FF);
+          SymbolTable.insert({Instr.getOperand(0).getName(), Call});
         }
       }
-      if (utils::isStoreInstruction(tokens)) {
-        auto srcOperandName = instr.getOperand(1).getName();
-        Value *src = symbolTable.lookup(srcOperandName);
-        bool useTypeInference{false};
-        if (!src) {
+      if (utils::isStoreInstruction(Tokens)) {
+        auto SrcOperandName = Instr.getOperand(1).getName();
+        Value *Src = SymbolTable.lookup(SrcOperandName);
+        bool UseTypeInference{false};
+        if (!Src) {
           // Source should already exist. If we can't find it, this might be a
           // clone
-          src = findSourceFromClones(srcOperandName, clones, symbolTable);
-          if (!src) {
+          Src = findSourceFromClones(SrcOperandName, Clones, SymbolTable);
+          if (!Src) {
             continue;
           }
           // If it is a clone, then we are dealing with kernel args. Rely on
           // type inference
-          useTypeInference = true;
+          UseTypeInference = true;
         }
-        auto dstOperandName = utils::getAddress(instr.getOperand(0).getName());
-        Value *dst = symbolTable.lookup(dstOperandName);
-        if (!dst) {
-          if (useTypeInference) {
-            dst = Builder.CreateAlloca(
-                mapType(typeInferrer->getType(dstOperandName)));
+        auto DstOperandName = utils::getAddress(Instr.getOperand(0).getName());
+        Value *Dst = SymbolTable.lookup(DstOperandName);
+        if (!Dst) {
+          if (UseTypeInference) {
+            Dst = Builder.CreateAlloca(
+                mapType(typeInferrer->getType(DstOperandName)));
           } else {
-            dst = Builder.CreateAlloca(src->getType());
+            Dst = Builder.CreateAlloca(Src->getType());
           }
-          symbolTable.insert({dstOperandName, dst});
+          SymbolTable.insert({DstOperandName, Dst});
         }
-        Builder.CreateStore(src, dst);
+        Builder.CreateStore(Src, Dst);
       }
-      if (utils::isLoadInstruction(tokens)) {
-        if (utils::getStateSpace(tokens) == "param")
+      if (utils::isLoadInstruction(Tokens)) {
+        if (utils::getStateSpace(Tokens) == "param")
           continue;
-        auto srcName = utils::getAddress(instr.getOperand(1).getName());
-        Value *src = symbolTable.lookup(srcName);
-        if (!src)
+        auto SrcName = utils::getAddress(Instr.getOperand(1).getName());
+        Value *Src = SymbolTable.lookup(SrcName);
+        if (!Src)
           continue;
-        auto instrType = utils::getInstrType(tokens);
-        Value *result;
-        if (instrType == "u64") {
-          result = Builder.CreateLoad(Builder.getPtrTy(), src);
-        } else if (instrType == "u32") {
-          result = Builder.CreateLoad(Builder.getInt32Ty(), src);
-        } else if (instrType == "f32") {
-          result = Builder.CreateLoad(Builder.getFloatTy(), src);
+        auto InstrType = utils::getInstrType(Tokens);
+        Value *Result;
+        if (InstrType == "u64") {
+          Result = Builder.CreateLoad(Builder.getPtrTy(), Src);
+        } else if (InstrType == "u32") {
+          Result = Builder.CreateLoad(Builder.getInt32Ty(), Src);
+        } else if (InstrType == "f32") {
+          Result = Builder.CreateLoad(Builder.getFloatTy(), Src);
         }
-        symbolTable.insert({instr.getOperand(0).getName(), result});
+        SymbolTable.insert({Instr.getOperand(0).getName(), Result});
       }
-      if (utils::isBinaryInstruction(tokens)) {
-        Value *a = symbolTable.lookup(instr.getOperand(1).getName());
-        if (!a) {
+      if (utils::isBinaryInstruction(Tokens)) {
+        Value *A = SymbolTable.lookup(Instr.getOperand(1).getName());
+        if (!A) {
           continue;
         }
-        Value *b = symbolTable.lookup(instr.getOperand(2).getName());
-        if (!b) {
+        Value *B = SymbolTable.lookup(Instr.getOperand(2).getName());
+        if (!B) {
           continue;
         }
 
         // Check if this can be mapped to a GEP
         // Check for address calculation, followed by use in load
         // Alternatively address calculation,
-        auto resName = instr.getOperand(0).getName();
-        auto ptxval = body.lookup(resName);
-        if (ptxval) {
-          auto numUses = (*ptxval)->getNumUses();
+        auto ResName = Instr.getOperand(0).getName();
+        auto Ptxval = Body.lookup(ResName);
+        if (Ptxval) {
+          auto NumUses = (*Ptxval)->getNumUses();
           // TODO: This can be relaxed
-          if (numUses == 1) {
-            auto nextInst = (*ptxval)->getUses()[0];
-            auto nextInstTokens = utils::tokenize(nextInst->getName());
-            auto instrType = utils::getInstrType(nextInstTokens);
-            if (utils::isLoadInstruction(nextInstTokens)) {
+          if (NumUses == 1) {
+            auto NextInst = (*Ptxval)->getUses()[0];
+            auto NextInstTokens = utils::tokenize(NextInst->getName());
+            auto InstrType = utils::getInstrType(NextInstTokens);
+            if (utils::isLoadInstruction(NextInstTokens)) {
               // TODO: Add support for more types
-              if (instrType == "f32") {
-                Value *result = Builder.CreateGEP(Builder.getFloatTy(), a, b);
-                symbolTable.insert({resName, result});
+              if (InstrType == "f32") {
+                Value *Result = Builder.CreateGEP(Builder.getFloatTy(), A, B);
+                SymbolTable.insert({ResName, Result});
                 continue;
               }
             }
             // Here check that we are storing into the address
-            if (utils::isStoreInstruction(nextInstTokens)) {
-              auto storeName =
-                  utils::getAddress(nextInst->getOperand(0).getName());
-              if (storeName == resName) {
-                if (instrType == "f32") {
-                  Value *result = Builder.CreateGEP(Builder.getFloatTy(), a, b);
-                  symbolTable.insert({resName, result});
+            if (utils::isStoreInstruction(NextInstTokens)) {
+              auto StoreName =
+                  utils::getAddress(NextInst->getOperand(0).getName());
+              if (StoreName == ResName) {
+                if (InstrType == "f32") {
+                  Value *Result = Builder.CreateGEP(Builder.getFloatTy(), A, B);
+                  SymbolTable.insert({ResName, Result});
                   continue;
                 }
               }
@@ -218,47 +218,47 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
 
         // Check if floating point add
         // TODO: Handle rounding modes
-        if (utils::getInstrType(tokens) == "f32") {
-          if (utils::isAddInstruction(tokens)) {
-            Value *result = Builder.CreateFAdd(a, b);
-            symbolTable.insert({instr.getOperand(0).getName(), result});
+        if (utils::getInstrType(Tokens) == "f32") {
+          if (utils::isAddInstruction(Tokens)) {
+            Value *Result = Builder.CreateFAdd(A, B);
+            SymbolTable.insert({Instr.getOperand(0).getName(), Result});
           }
           continue;
         }
 
         // If operands are 32-bit and a .lo is requested, we can just emit an
         // llvm mul
-        auto checkBitWidth = [](Value *a) {
-          return (a->getType()->isIntegerTy() &&
-                  a->getType()->getIntegerBitWidth() == 32);
+        auto CheckBitWidth = [](Value *A) {
+          return (A->getType()->isIntegerTy() &&
+                  A->getType()->getIntegerBitWidth() == 32);
         };
-        auto checkInstrType = utils::getInstrType(tokens) == "s32" ||
-                              utils::getInstrType(tokens) == "u32";
-        Value *result;
-        if (utils::isMulInstruction(tokens)) {
-          auto checkInstrMode = utils::getInstrMode(tokens) == "lo";
-          if (checkInstrMode && checkInstrType && checkBitWidth(a) &&
-              checkBitWidth(b))
-            result = Builder.CreateMul(a, b);
+        auto CheckInstrType = utils::getInstrType(Tokens) == "s32" ||
+                              utils::getInstrType(Tokens) == "u32";
+        Value *Result;
+        if (utils::isMulInstruction(Tokens)) {
+          auto CheckInstrMode = utils::getInstrMode(Tokens) == "lo";
+          if (CheckInstrMode && CheckInstrType && CheckBitWidth(A) &&
+              CheckBitWidth(B))
+            Result = Builder.CreateMul(A, B);
         }
-        if (utils::isAddInstruction(tokens)) {
-          if (checkInstrType && checkBitWidth(a) && checkBitWidth(b))
-            result = Builder.CreateAdd(a, b);
+        if (utils::isAddInstruction(Tokens)) {
+          if (CheckInstrType && CheckBitWidth(A) && CheckBitWidth(B))
+            Result = Builder.CreateAdd(A, B);
         }
-        symbolTable.insert({instr.getOperand(0).getName(), result});
+        SymbolTable.insert({Instr.getOperand(0).getName(), Result});
       }
-      if (utils::isShlInstruction(tokens)) {
-        Value *a = symbolTable.lookup(instr.getOperand(1).getName());
-        if (!a) {
+      if (utils::isShlInstruction(Tokens)) {
+        Value *A = SymbolTable.lookup(Instr.getOperand(1).getName());
+        if (!A) {
           continue;
         }
-        auto type = a->getType();
-        if (type->isIntegerTy()) {
-          auto instrWidth = utils::getInstrBitWidth(tokens);
-          if (instrWidth > type->getIntegerBitWidth()) {
-            if (instrWidth == 64) {
-              Value *result = Builder.CreateZExt(a, Builder.getInt64Ty());
-              symbolTable.insert({instr.getOperand(0).getName(), result});
+        auto Type = A->getType();
+        if (Type->isIntegerTy()) {
+          auto InstrWidth = utils::getInstrBitWidth(Tokens);
+          if (InstrWidth > Type->getIntegerBitWidth()) {
+            if (InstrWidth == 64) {
+              Value *Result = Builder.CreateZExt(A, Builder.getInt64Ty());
+              SymbolTable.insert({Instr.getOperand(0).getName(), Result});
             }
           }
         }
@@ -268,16 +268,16 @@ void PTXToLLVMConverter::AddFunction(PTXKernel &kernel) {
 }
 
 std::string PTXToLLVMConverter::printModule() const {
-  std::string str;
-  llvm::raw_string_ostream os(str);
-  os << *module;
-  os.flush();
-  return str;
+  std::string Str;
+  llvm::raw_string_ostream Os(Str);
+  Os << *module;
+  Os.flush();
+  return Str;
 }
 
 Module *PTXToLLVMConverter::RaiseToLLVM() {
-  for (auto kernel : program.getKernels()) {
-    AddFunction(kernel);
+  for (auto Kernel : program.getKernels()) {
+    AddFunction(Kernel);
   }
   return getModule();
 }

@@ -4,96 +4,96 @@
 
 namespace utils {
 
-std::vector<std::string_view> tokenize(std::string_view inst) {
-  std::vector<std::string_view> tokens;
-  size_t begin{0}, end{0};
-  for (size_t i = 0; i < inst.size(); i++) {
-    if (inst[i] == '.') {
-      end = i;
-      tokens.push_back(inst.substr(begin, end - begin));
-      begin = end + 1;
+std::vector<std::string_view> tokenize(std::string_view Inst) {
+  std::vector<std::string_view> Tokens;
+  size_t Begin{0}, End{0};
+  for (size_t I = 0; I < Inst.size(); I++) {
+    if (Inst[I] == '.') {
+      End = I;
+      Tokens.push_back(Inst.substr(Begin, End - Begin));
+      Begin = End + 1;
     }
-    if (i == inst.size() - 1) {
-      tokens.push_back(inst.substr(begin, inst.size() - begin));
+    if (I == Inst.size() - 1) {
+      Tokens.push_back(Inst.substr(Begin, Inst.size() - Begin));
     }
   }
-  return tokens;
+  return Tokens;
 }
 
-std::string_view getPrefix(std::vector<std::string_view> &tokens) {
-  return tokens[0];
+std::string_view getPrefix(std::vector<std::string_view> &Tokens) {
+  return Tokens[0];
 }
 
-std::string_view getStateSpace(std::vector<std::string_view> &tokens) {
+std::string_view getStateSpace(std::vector<std::string_view> &Tokens) {
   assert(tokens.size() >= 2);
-  std::vector<std::string_view> spaces{"param", "global", "local", "shared",
+  std::vector<std::string_view> Spaces{"param", "global", "local", "shared",
                                        "const", "sreg",   "reg"};
-  for (auto space : spaces) {
-    if (tokens[1] == space)
-      return space;
+  for (auto Space : Spaces) {
+    if (Tokens[1] == Space)
+      return Space;
   }
   return "generic";
 }
 
 // Assumes last token can be used to determine the type
-std::string_view getInstrType(std::vector<std::string_view> &tokens) {
-  return tokens.back();
+std::string_view getInstrType(std::vector<std::string_view> &Tokens) {
+  return Tokens.back();
 }
 
-unsigned int getInstrBitWidth(std::vector<std::string_view> &tokens) {
-  std::string s(utils::getInstrType(tokens).substr(1));
-  std::stringstream ss(s);
-  unsigned int instrWidth;
-  ss >> instrWidth;
-  return instrWidth;
+unsigned int getInstrBitWidth(std::vector<std::string_view> &Tokens) {
+  std::string S(utils::getInstrType(Tokens).substr(1));
+  std::stringstream Ss(S);
+  unsigned int InstrWidth;
+  Ss >> InstrWidth;
+  return InstrWidth;
 }
 
-std::string_view getInstrMode(std::vector<std::string_view> &tokens) {
+std::string_view getInstrMode(std::vector<std::string_view> &Tokens) {
   // For instructions with 3 parts, return the middle token
-  if (tokens.size() == 3)
-    return tokens[1];
+  if (Tokens.size() == 3)
+    return Tokens[1];
   return "";
 }
 
-bool isMoveInstruction(std::vector<std::string_view> &tokens) {
-  return getPrefix(tokens) == "mov";
+bool isMoveInstruction(std::vector<std::string_view> &Tokens) {
+  return getPrefix(Tokens) == "mov";
 }
 
-bool isMulInstruction(std::vector<std::string_view> &tokens) {
-  return getPrefix(tokens) == "mul";
+bool isMulInstruction(std::vector<std::string_view> &Tokens) {
+  return getPrefix(Tokens) == "mul";
 }
 
-bool isAddInstruction(std::vector<std::string_view> &tokens) {
-  return getPrefix(tokens) == "add";
+bool isAddInstruction(std::vector<std::string_view> &Tokens) {
+  return getPrefix(Tokens) == "add";
 }
 
-bool isShlInstruction(std::vector<std::string_view> &tokens) {
-  return getPrefix(tokens) == "shl";
+bool isShlInstruction(std::vector<std::string_view> &Tokens) {
+  return getPrefix(Tokens) == "shl";
 }
 
-bool isLoadInstruction(std::vector<std::string_view> &tokens) {
-  return getPrefix(tokens) == "ld";
+bool isLoadInstruction(std::vector<std::string_view> &Tokens) {
+  return getPrefix(Tokens) == "ld";
 }
 
-bool isStoreInstruction(std::vector<std::string_view> &tokens) {
-  return getPrefix(tokens) == "st";
+bool isStoreInstruction(std::vector<std::string_view> &Tokens) {
+  return getPrefix(Tokens) == "st";
 }
 
-bool isConvertInstruction(std::vector<std::string_view> &tokens) {
-  return getPrefix(tokens) == "cvta";
+bool isConvertInstruction(std::vector<std::string_view> &Tokens) {
+  return getPrefix(Tokens) == "cvta";
 }
 
-bool isBinaryInstruction(std::vector<std::string_view> &tokens) {
-  auto prefix = getPrefix(tokens);
-  return ((prefix == "mul") || (prefix == "add"));
+bool isBinaryInstruction(std::vector<std::string_view> &Tokens) {
+  auto Prefix = getPrefix(Tokens);
+  return ((Prefix == "mul") || (Prefix == "add"));
 }
 
-std::string_view getAddress(std::string_view str) {
-  return str.substr(1, str.size() - 2);
+std::string_view getAddress(std::string_view Str) {
+  return Str.substr(1, Str.size() - 2);
 }
 
-bool isDereference(std::string_view str) {
-  return (str[0] == '[') && (str.back() == ']');
+bool isDereference(std::string_view Str) {
+  return (Str[0] == '[') && (Str.back() == ']');
 }
 
 } // namespace utils

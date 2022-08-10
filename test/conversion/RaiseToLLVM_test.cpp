@@ -15,16 +15,16 @@
   }
 
 TEST(RaiseToLLVMTest, SimpleKernel) {
-  llvm::LLVMContext context;
-  PTXProgram program("kernel");
-  std::vector<std::shared_ptr<PTXValue>> args;
-  args.push_back(
+  llvm::LLVMContext Context;
+  PTXProgram Program("kernel");
+  std::vector<std::shared_ptr<PTXValue>> Args;
+  Args.push_back(
       std::make_shared<PTXValue>("_Z3addPKfS0_Pf_param_0", PTXType("u64")));
-  args.push_back(
+  Args.push_back(
       std::make_shared<PTXValue>("_Z3addPKfS0_Pf_param_1", PTXType("u64")));
-  args.push_back(
+  Args.push_back(
       std::make_shared<PTXValue>("_Z3addPKfS0_Pf_param_2", PTXType("u64")));
-  PTXControlFlowGraph body;
+  PTXControlFlowGraph Body;
   PTXBasicBlock block;
   DEFINE("mov.u64", "%SPL", "__local_depot6");
   DEFINE("cvta.local.u64", "%SP", "%SPL");
@@ -59,15 +59,15 @@ TEST(RaiseToLLVMTest, SimpleKernel) {
   DEFINE("ld.u64", "%rd16", "[%SP+16]");
   DEFINE3("add.s64", "%rd17", "%rd16", "%rd12");
   DEFINE("st.f32", "[%rd17]", "%f3");
-  body.push_back(block);
-  body.computeDefUseChain();
-  PTXKernel kernel{"add", args, body};
-  program.push_back(kernel);
-  PTXToLLVMConverter converter(program, context);
-  converter.RaiseToLLVM();
-  auto moduleStr = converter.printModule();
-  std::cout << moduleStr << std::endl;
-  std::string expectedStr =
+  Body.push_back(block);
+  Body.computeDefUseChain();
+  PTXKernel Kernel{"add", Args, Body};
+  Program.push_back(Kernel);
+  PTXToLLVMConverter Converter(Program, Context);
+  Converter.RaiseToLLVM();
+  auto ModuleStr = Converter.printModule();
+  std::cout << ModuleStr << std::endl;
+  std::string ExpectedStr =
       "; ModuleID = 'kernel'\n"
       "source_filename = \"kernel\"\n"
       "target datalayout = \"e-i64:64-i128:128-v16:16-v32:32-n16:32:64\"\n"
@@ -114,5 +114,5 @@ TEST(RaiseToLLVMTest, SimpleKernel) {
       "optnone }\n"
       "attributes #1 = { nocallback nofree nosync nounwind readnone "
       "speculatable willreturn }\n";
-  EXPECT_EQ(moduleStr, expectedStr);
+  EXPECT_EQ(ModuleStr, ExpectedStr);
 }
