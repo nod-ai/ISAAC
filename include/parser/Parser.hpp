@@ -40,10 +40,13 @@ public:
 private:
   void advance(std::vector<Token> tokens);
 
-  bool parse_grammer_sequence(std::vector<Node_Type> node_sequence, std::vector<Token> tokens, Node &node);
+  bool parse_grammer_sequence(std::vector<Node_Type> node_sequence,
+                              std::vector<Token> tokens, Node &node);
 
-  bool handle_token(Node_Type node_type, std::vector<Token> tokens, Node &node, Node &parent_node);
-  bool handle_grammer(Node_Type node_type, std::vector<Token> tokens, Node &node, Node &parent_node);
+  bool handle_token(Node_Type node_type, std::vector<Token> tokens, Node &node,
+                    Node &parent_node);
+  bool handle_grammer(Node_Type node_type, std::vector<Token> tokens,
+                      Node &node, Node &parent_node);
 
   bool parse_statement(std::vector<Token> tokens, Node &node);
 
@@ -180,5 +183,6 @@ private:
   bool parse_parameter(std::vector<Token> tokens, Node &node);
   bool parse_alignment(std::vector<Token> tokens, Node &node);
   bool parse_statementVectorType(std::vector<Token> tokens, Node &node);
+  bool parse_vectorIndex(std::vector<Token> tokens, Node &node);
 };
-} // namespace ptx_parser
+} // namespace ptx
