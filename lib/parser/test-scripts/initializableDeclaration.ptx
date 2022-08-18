@@ -1,0 +1,3 @@
+.global .align 1 .b8 blockIdx[1];
+.global .align 1 .b8 blockDim[1];
+.global .align 1 .b8 threadIdx[1];
