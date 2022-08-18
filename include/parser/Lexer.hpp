@@ -11,6 +11,14 @@ namespace ptx {
 
 enum Node_Type {
   // Tokens
+  PREPROCESSOR_INCLUDE,
+  PREPROCESSOR_DEFINE,
+  PREPROCESSOR_IF,
+  PREPROCESSOR_IFDEF,
+  PREPROCESSOR_ELSE,
+  PREPROCESSOR_ENDIF,
+  PREPROCESSOR_LINE,
+  PREPROCESSOR_FILE,
   OPCODE_ADD,
   OPCODE_SUB,
   OPCODE_COS,
@@ -139,11 +147,19 @@ enum Node_Type {
   TOKEN_V4,
   TOKEN_OPENPARENTHESIS,
   TOKEN_CLOSEPARENTHESIS,
+  TOKEN_SAMPLEREF,
+  TOKEN_SURFREF,
+  TOKEN_TEXREF,
+  TOKEN_ADDRESS_SIZE,
+  TOKEN_OPENBRACKET,
+  TOKEN_CLOSEBRACKET,
+  TOKEN_FILE,
+  TOKEN_EQUALS,
   // empty node type
   noneNode,
   // leaf mode
   leaf,
-  // grammer nodes
+  // grammar nodes
   statement,
   initializableDeclaration,
   nonEntryStatement,
@@ -160,6 +176,7 @@ enum Node_Type {
   entryStatement,
   registerDeclaration,
   location,
+  addCModifier,
   pragma,
   callprototype,
   calltargets,
@@ -278,6 +295,29 @@ enum Node_Type {
   selp,
   suq,
   sured,
+  textureSpace,
+  optionalUni,
+  branchOperand,
+  call,
+  atomModifier,
+  atomicOpcode,
+  memoryOperand,
+  barrierOperation,
+  optionalBarrierOperation,
+  operandSequence,
+  optionalTimestampAndSize,
+  parameterAttribute,
+  arrayOperand,
+  movSourceOperand,
+  offsetAddressableOperand,
+  movIndexedOperand,
+  initializer,
+  assignment,
+  floatInitializer,
+  decimalInitializer,
+  singleInitializer,
+  optionalReturnArgumentList,
+  rcpSqrtInstruction,
 };
 
 class Token {

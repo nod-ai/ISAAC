@@ -20,9 +20,11 @@ public:
 
   void add(Node child) { children.push_back(child); }
 
+  std::vector<Node> get_children() { return children; }
+
   void reset() {
     children.clear();
-    node_type = noneNode;
+    // node_type = noneNode;
   }
 
   std::string repr();
@@ -40,12 +42,12 @@ public:
 private:
   void advance(std::vector<Token> tokens);
 
-  bool parse_grammer_sequence(std::vector<Node_Type> node_sequence,
+  bool parse_grammar_sequence(std::vector<Node_Type> node_sequence,
                               std::vector<Token> tokens, Node &node);
 
   bool handle_token(Node_Type node_type, std::vector<Token> tokens, Node &node,
                     Node &parent_node);
-  bool handle_grammer(Node_Type node_type, std::vector<Token> tokens,
+  bool handle_grammar(Node_Type node_type, std::vector<Token> tokens,
                       Node &node, Node &parent_node);
 
   bool parse_statement(std::vector<Token> tokens, Node &node);
@@ -184,5 +186,12 @@ private:
   bool parse_alignment(std::vector<Token> tokens, Node &node);
   bool parse_statementVectorType(std::vector<Token> tokens, Node &node);
   bool parse_vectorIndex(std::vector<Token> tokens, Node &node);
+  bool parse_arrayOperand(std::vector<Token> tokens, Node &node);
+  bool parse_initializer(std::vector<Token> tokens, Node &node);
+  bool parse_assignment(std::vector<Token> tokens, Node &node);
+  bool parse_decimalInitializer(std::vector<Token> tokens, Node &node);
+  bool parse_floatInitializer(std::vector<Token> tokens, Node &node);
+  bool parse_singleInitializer(std::vector<Token> tokens, Node &node);
+  bool parse_optionalReturnArgumentList(std::vector<Token> tokens, Node &node);
 };
 } // namespace ptx

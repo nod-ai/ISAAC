@@ -11,6 +11,7 @@ void Token::clear() {
 Token::Token(std::string text_) {
   std::__cxx11::regex float_e("[0-9]*\\.[0-9]{1,}");
   std::__cxx11::regex int_e("[0-9]");
+  std::__cxx11::regex decimal_e("-?[1-9][[:digit:]]*");
   std::__cxx11::regex identifier_e(
       "[[:alpha:]][[:alnum:]_$]*|[_$%][[:alnum:]_$]+");
   text = text_;
@@ -18,11 +19,19 @@ Token::Token(std::string text_) {
     token_type = TOKEN_VERSION;
   } else if (text_ == ".weak") {
     token_type = TOKEN_WEAK;
+  } else if (text_ == ".global") {
+    token_type = TOKEN_GLOBAL;
+  } else if (text_ == ".align") {
+    token_type = TOKEN_ALIGN;
   } else if (text_ == ".func") {
     token_type = TOKEN_FUNCTION;
   } else if (text_ == ".param") {
     token_type = TOKEN_PARAM;
-  } else if (text_ == "b32") {
+  } else if (text_ == ".b8") {
+    token_type = TOKEN_B8;
+  } else if (text_ == ".b16") {
+    token_type = TOKEN_B16;
+  } else if (text_ == ".b32") {
     token_type = TOKEN_B32;
   } else if (text_ == ".b64") {
     token_type = TOKEN_B64;
@@ -30,6 +39,16 @@ Token::Token(std::string text_) {
     token_type = TOKEN_OPENPARENTHESIS;
   } else if (text_ == ")") {
     token_type = TOKEN_CLOSEPARENTHESIS;
+  } else if (text_ == "[") {
+    token_type = TOKEN_OPENBRACKET;
+  } else if (text_ == "]") {
+    token_type = TOKEN_CLOSEBRACKET;
+  } else if (text_ == "{") {
+    token_type = TOKEN_OPENBRACE;
+  } else if (text_ == "}") {
+    token_type = TOKEN_CLOSEBRACE;
+  } else if (text_ == "=") {
+    token_type = TOKEN_EQUALS;
   } else if (text_ == "add") {
     token_type = OPCODE_ADD;
   } else if (text_ == "sub") {
@@ -58,7 +77,7 @@ Token::Token(std::string text_) {
     token_type = OPCODE_BREV;
   } else if (text_ == "brkpt") {
     token_type = OPCODE_BRKPT;
-  } else if(text_ == "div") {
+  } else if (text_ == "div") {
     token_type = OPCODE_DIV;
   } else if (text_ == ".cc") {
     token_type = TOKEN_CARRY;
@@ -84,6 +103,8 @@ Token::Token(std::string text_) {
     token_type = TOKEN_RN;
   } else if (std::regex_match(text_, float_e)) {
     token_type = TOKEN_DOUBLE_CONSTANT;
+  } else if (std::regex_match(text_, decimal_e)) {
+    token_type = TOKEN_DECIMAL_CONSTANT;
   } else if (std::regex_match(text_, identifier_e)) {
     token_type = TOKEN_IDENTIFIER;
   } else {

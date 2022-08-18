@@ -50,9 +50,8 @@ bool Parser::handle_token(Node_Type node_type, std::vector<Token> tokens, Node &
   return false;
 }
 
-
-
-bool Parser::parse_grammer_sequence(std::vector<Node_Type> node_sequence, std::vector<Token> tokens, Node &node){
+bool Parser::parse_grammar_sequence(std::vector<Node_Type> node_sequence,
+                                    std::vector<Token> tokens, Node &node) {
   Node child_node;
   int current_token_index_placeholder = current_token_index;
   bool success;
@@ -98,8 +97,36 @@ bool Parser::parse_grammer_sequence(std::vector<Node_Type> node_sequence, std::v
         }
         break;
 
-        // Grammers
-        
+      case TOKEN_ALIGN:
+        if (!handle_token(TOKEN_ALIGN, tokens, child_node, node)) {
+          current_token_index = current_token_index_placeholder;
+          return false;
+        }
+        break;
+
+      case TOKEN_DECIMAL_CONSTANT:
+        if (!handle_token(TOKEN_DECIMAL_CONSTANT, tokens, child_node, node)) {
+          current_token_index = current_token_index_placeholder;
+          return false;
+        }
+        break;
+
+      case TOKEN_OPENBRACKET:
+        if (!handle_token(TOKEN_OPENBRACKET, tokens, child_node, node)) {
+          current_token_index = current_token_index_placeholder;
+          return false;
+        }
+        break;
+
+      case TOKEN_CLOSEBRACKET:
+        if (!handle_token(TOKEN_CLOSEBRACKET, tokens, child_node, node)) {
+          current_token_index = current_token_index_placeholder;
+          return false;
+        }
+        break;
+
+        // grammars
+
       case statement:
         success = parse_statement(tokens, child_node);
         if(success) {
@@ -340,6 +367,18 @@ bool Parser::parse_grammer_sequence(std::vector<Node_Type> node_sequence, std::v
           }
           break;
 
+        case addressableVariablePrefix:
+          success = parse_addressableVariablePrefix(tokens, child_node);
+          if (success) {
+            node.add(child_node);
+          } else {
+            current_token_index = current_token_index_placeholder;
+            node.reset();
+            child_node.reset();
+            return false;
+          }
+          break;
+
         case entryDeclaration:
           success = parse_entryDeclaration(tokens, child_node);
           if (success) {
@@ -558,18 +597,6 @@ bool Parser::parse_grammer_sequence(std::vector<Node_Type> node_sequence, std::v
 
         case uninitializable:
           success = parse_uninitializable(tokens, child_node);
-          if (success) {
-            node.add(child_node);
-          } else {
-            current_token_index = current_token_index_placeholder;
-            node.reset();
-            child_node.reset();
-            return false;
-          }
-          break;
-
-        case addressableVariablePrefix:
-          success = parse_addressableVariablePrefix(tokens, child_node);
           if (success) {
             node.add(child_node);
           } else {
@@ -1577,6 +1604,18 @@ bool Parser::parse_grammer_sequence(std::vector<Node_Type> node_sequence, std::v
           }
           break;
 
+        case optionalReturnArgumentList:
+          success = parse_optionalReturnArgumentList(tokens, child_node);
+          if (success) {
+            node.add(child_node);
+          } else {
+            current_token_index = current_token_index_placeholder;
+            node.reset();
+            child_node.reset();
+            return false;
+          }
+          break;
+
         case functionName:
           success = parse_functionName(tokens, child_node);
           if (success) {
@@ -1697,6 +1736,66 @@ bool Parser::parse_grammer_sequence(std::vector<Node_Type> node_sequence, std::v
           }
           break;
 
+        case initializer:
+          success = parse_initializer(tokens, child_node);
+          if (success) {
+            node.add(child_node);
+          } else {
+            current_token_index = current_token_index_placeholder;
+            node.reset();
+            child_node.reset();
+            return false;
+          }
+          break;
+
+        case singleInitializer:
+          success = parse_singleInitializer(tokens, child_node);
+          if (success) {
+            node.add(child_node);
+          } else {
+            current_token_index = current_token_index_placeholder;
+            node.reset();
+            child_node.reset();
+            return false;
+          }
+          break;
+
+        case decimalInitializer:
+          success = parse_decimalInitializer(tokens, child_node);
+          if (success) {
+            node.add(child_node);
+          } else {
+            current_token_index = current_token_index_placeholder;
+            node.reset();
+            child_node.reset();
+            return false;
+          }
+          break;
+
+        case floatInitializer:
+          success = parse_floatInitializer(tokens, child_node);
+          if (success) {
+            node.add(child_node);
+          } else {
+            current_token_index = current_token_index_placeholder;
+            node.reset();
+            child_node.reset();
+            return false;
+          }
+          break;
+
+        case assignment:
+          success = parse_assignment(tokens, child_node);
+          if (success) {
+            node.add(child_node);
+          } else {
+            current_token_index = current_token_index_placeholder;
+            node.reset();
+            child_node.reset();
+            return false;
+          }
+          break;
+
         case TOKEN_COMMA:
           if (!handle_token(TOKEN_COMMA, tokens, child_node, node)) {
             current_token_index = current_token_index_placeholder;
@@ -1706,6 +1805,9 @@ bool Parser::parse_grammer_sequence(std::vector<Node_Type> node_sequence, std::v
 
         default:
           std::cout << "Unimplemented token recieved" << std::endl;
+          current_token_index = current_token_index_placeholder;
+          node.reset();
+          child_node.reset();
           return false;
         }
   }
@@ -1777,11 +1879,11 @@ bool Parser::parse_initializableDeclaration(std::vector<Token> tokens,
                                             Node &node) {
   bool success;
   node.set_type(initializableDeclaration);
-  std::vector<Node_Type> grammer_sequence{
+  std::vector<Node_Type> grammar_sequence{
       initializable, addressableVariablePrefix,
       identifier,    arrayDimensions,
-      identifier,    TOKEN_SEMICOLON};
-  success = parse_grammer_sequence(grammer_sequence, tokens, node);
+      initializer,   TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence, tokens, node);
   return success;
 }
 
@@ -1804,18 +1906,59 @@ bool Parser::parse_nonEntryStatement(std::vector<Token> tokens, Node &node) {
   return false;
 }
 
-bool Parser::parse_entry(std::vector<Token> tokens, Node &node) {
+bool Parser::parse_initializer(std::vector<Token> tokens, Node &node) {
   bool success;
-  node.set_type(entry);
-  std::vector<Node_Type> grammer_sequence_0{entryDeclaration, openBrace,
-                                            entryStatements, closeBrace};
-  success = parse_grammer_sequence(grammer_sequence_0, tokens, node);
+  node.set_type(initializer);
+
+  std::vector<Node_Type> grammar_sequence_0{assignment, decimalInitializer};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
   if (success) {
     return true;
   }
 
-  std::vector<Node_Type> grammer_sequence_1{entryDeclaration, TOKEN_SEMICOLON};
-  success = parse_grammer_sequence(grammer_sequence_1, tokens, node);
+  std::vector<Node_Type> grammar_sequence_1{assignment, floatInitializer};
+  success = parse_grammar_sequence(grammar_sequence_1, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_2{assignment, singleInitializer};
+  success = parse_grammar_sequence(grammar_sequence_2, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  return true;
+}
+
+bool Parser::parse_assignment(std::vector<Token> tokens, Node &node) {
+  int current_token_index_placeholder = current_token_index;
+  node.set_type(assignment);
+  Node child_node;
+
+  if (tokens[current_token_index].token_type == TOKEN_EQUALS) {
+    child_node.set_type(leaf);
+    child_node.set_token(tokens[current_token_index]);
+    node.add(child_node);
+    advance(tokens);
+    return true;
+  }
+
+  return false;
+}
+
+bool Parser::parse_entry(std::vector<Token> tokens, Node &node) {
+  bool success;
+  node.set_type(entry);
+  std::vector<Node_Type> grammar_sequence_0{entryDeclaration, openBrace,
+                                            entryStatements, closeBrace};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_1{entryDeclaration, TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_1, tokens, node);
   if (success) {
     return true;
   }
@@ -1898,20 +2041,19 @@ bool Parser::parse_functionBodyDefinition(std::vector<Token> tokens,
                                           Node &node) {
   bool success = false;
   node.set_type(functionBodyDefinition);
-  std::vector<Node_Type> grammer_sequence_0{externOrVisible, functionBegin,
-                                            optionalReturnArgument,
+  std::vector<Node_Type> grammar_sequence_0{externOrVisible, functionBegin,
+                                            optionalReturnArgumentList,
                                             functionName, argumentList};
-  success = parse_grammer_sequence(grammer_sequence_0, tokens, node);
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
   return success;
 }
 
 bool Parser::parse_argumentList(std::vector<Token> tokens, Node &node) {
   bool success;
   node.set_type(argumentList);
-  std::vector<Node_Type> grammer_sequence_0{argumentListBegin, argumentListBody,
+  std::vector<Node_Type> grammar_sequence_0{argumentListBegin, argumentListBody,
                                             argumentListEnd};
-  success = parse_grammer_sequence(grammer_sequence_0, tokens, node);
-  // std::cout << node.repr() << std::endl;
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
   return success;
 }
 
@@ -2057,9 +2199,9 @@ bool Parser::parse_functionDeclaration(std::vector<Token> tokens, Node &node) {
   node.set_type(functionDeclaration);
 
   std::vector<Node_Type> grammar_sequence_0{
-      externOrVisible, functionBegin, optionalArgumentList,
+      externOrVisible, functionBegin, optionalReturnArgumentList,
       functionName,    argumentList,  optionalSemicolon};
-  success = parse_grammer_sequence(grammar_sequence_0, tokens, node);
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
   if (success) {
     return true;
   };
@@ -2181,120 +2323,23 @@ bool Parser::parse_closeBrace(std::vector<Token> tokens, Node &node) {
   return false;
 }
 
-bool Parser::parse_entryStatements(std::vector<Token> tokens, Node &node) {
-  bool success = false;
-  int current_token_index_placeholder = current_token_index;
-
-  node.set_type(entryStatements);
-  Node child_node;
-
-  success = parse_completeEntryStatement(tokens, child_node);
-  if (success) {
-    node.add(child_node);
-    child_node.reset();
-  } else {
-    child_node.reset();
-    node.reset();
-    current_token_index = current_token_index_placeholder;
-  }
-  if (success) {
-    int token_index_checkpoint_0 = current_token_index;
-    success = parse_entryStatements(tokens, child_node);
-    if (success) {
-      node.add(child_node);
-      child_node.reset();
-      return true;
-    } else {
-      child_node.reset();
-      node.reset();
-      current_token_index = token_index_checkpoint_0;
-    }
-    return true;
-  }
-  return false;
-}
-
 bool Parser::parse_completeEntryStatement(std::vector<Token> tokens,
                                           Node &node) {
-  bool success = false;
-  int current_token_index_placeholder = current_token_index;
+  bool success;
 
-  node.set_type(completeEntryStatement);
-  Node child_node;
-
-  success = parse_uninitializableDeclaration(tokens, child_node);
-  if (success) {
-    node.add(child_node);
-    return true;
-  } else {
-    child_node.reset();
-    current_token_index = current_token_index_placeholder;
-  }
-
-  success = parse_entryStatement(tokens, child_node);
-  if (success) {
-    node.add(child_node);
-    return true;
-  } else {
-    child_node.reset();
-    current_token_index = current_token_index_placeholder;
-  }
-
-  success = parse_guard(tokens, child_node);
-  if (success) {
-    node.add(child_node);
-    child_node.reset();
-    success = parse_instruction(tokens, child_node);
+  std::vector<std::vector<Node_Type>> grammar_sequences{
+      {uninitializableDeclaration},
+      {entryStatement},
+      {guard, instruction, optionalMetadata},
+      {openBrace, entryStatements, closeBrace}};
+  for (std::vector<Node_Type> grammar_sequence : grammar_sequences) {
+    node.set_type(completeEntryStatement);
+    success = parse_grammar_sequence(grammar_sequence, tokens, node);
     if (success) {
-      node.add(child_node);
-      child_node.reset();
-      success = parse_optionalMetadata(tokens, child_node);
-      if (success) {
-        node.add(child_node);
-        return true;
-      } else {
-        child_node.reset();
-        node.reset();
-        current_token_index = current_token_index_placeholder;
-      }
-    } else {
-      child_node.reset();
-      node.reset();
-      current_token_index = current_token_index_placeholder;
+      return true;
     }
-  } else {
-    child_node.reset();
-    node.reset();
-    current_token_index = current_token_index_placeholder;
   }
 
-  success = parse_openBrace(tokens, child_node);
-  if (success) {
-    node.add(child_node);
-    child_node.reset();
-    success = parse_entryStatements(tokens, child_node);
-    if (success) {
-      node.add(child_node);
-      child_node.reset();
-      success = parse_closeBrace(tokens, child_node);
-      if (success) {
-        node.add(child_node);
-        return true;
-      } else {
-        child_node.reset();
-        node.reset();
-        current_token_index = current_token_index_placeholder;
-      }
-    } else {
-      child_node.reset();
-      node.reset();
-      current_token_index = current_token_index_placeholder;
-    }
-  } else {
-    child_node.reset();
-    node.reset();
-    current_token_index = current_token_index_placeholder;
-  }
   return false;
 }
 
@@ -2717,42 +2762,6 @@ bool Parser::parse_calltargets(std::vector<Token> tokens, Node &node) {
   return false;
 }
 
-bool Parser::parse_instruction(std::vector<Token> tokens, Node &node) {
-  bool success = false;
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(instruction);
-  Node child_node;
-
-  success = parse_addOrSub(tokens, child_node);
-  if (success) {
-    node.add(child_node);
-    return true;
-  } else {
-    child_node.reset();
-    current_token_index = current_token_index_placeholder;
-  }
-
-  // success = parse_ftzInstruction2(tokens, child_node);
-  // if(success) {
-  // 	node.add(child_node);
-  // 	return true;
-  // } else {
-  // 	child_node.reset();
-  // 	current_token_index = current_token_index_placeholder;
-  // }
-
-  // success = parse_ftzInstruction3(tokens, child_node);
-  // if(success) {
-  // 	node.add(child_node);
-  // 	return true;
-  // } else {
-  // 	child_node.reset();
-  // 	current_token_index = current_token_index_placeholder;
-  // }
-
-  return false;
-}
-
 bool Parser::parse_addOrSub(std::vector<Token> tokens, Node &node) {
   bool success;
   node.set_type(addOrSub);
@@ -2760,7 +2769,7 @@ bool Parser::parse_addOrSub(std::vector<Token> tokens, Node &node) {
   std::vector<Node_Type> grammar_sequence_0{
       addOrSubOpcode, addModifier, dataType, operand,        TOKEN_COMMA,
       operand,        TOKEN_COMMA, operand,  TOKEN_SEMICOLON};
-  success = parse_grammer_sequence(grammar_sequence_0, tokens, node);
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
   if (success) {
     return true;
   }
@@ -3154,7 +3163,7 @@ bool Parser::parse_optionalMetadata(std::vector<Token> tokens, Node &node) {
 
   // Not Yet Implemented
 
-  return false;
+  return true;
 }
 
 bool Parser::parse_guard(std::vector<Token> tokens, Node &node) {
@@ -3164,7 +3173,7 @@ bool Parser::parse_guard(std::vector<Token> tokens, Node &node) {
 
   // Not Yet Implemented
 
-  return false;
+  return true;
 }
 
 bool Parser::parse_uninitializable(std::vector<Token> tokens, Node &node) {
@@ -3201,9 +3210,9 @@ bool Parser::parse_initializable(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
   node.set_type(initializable);
   bool success = false;
-  std::vector<Node_Type> grammer_sequence{externOrVisible,
+  std::vector<Node_Type> grammar_sequence{externOrVisible,
                                           initializableAddress};
-  success = parse_grammer_sequence(grammer_sequence, tokens, node);
+  success = parse_grammar_sequence(grammar_sequence, tokens, node);
   return success;
 }
 
@@ -3224,55 +3233,104 @@ bool Parser::parse_arrayDimensions(std::vector<Token> tokens, Node &node) {
   return true;
 }
 
+bool Parser::parse_arrayOperand(std::vector<Token> tokens, Node &node) {
+  bool success;
+  node.set_type(arrayOperand);
+
+  std::vector<Node_Type> grammar_sequence_0{operand};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_1{TOKEN_OPENBRACE, identifierList,
+                                            TOKEN_CLOSEBRACE};
+  success = parse_grammar_sequence(grammar_sequence_1, tokens, node);
+  if (success) {
+    return true;
+  }
+}
+
 bool Parser::parse_addressableVariablePrefix(std::vector<Token> tokens,
                                              Node &node) {
   node.set_type(addressableVariablePrefix);
   bool success;
 
-  // this one needs work
-
-  std::vector<Node_Type> grammer_sequence_0{dataType, statementVectorType};
-  success = parse_grammer_sequence(grammer_sequence_0, tokens, node);
-  if (success) {
-    return true;
-  }
-
-  std::vector<Node_Type> grammer_sequence_1{statementVectorType, dataType};
-  success = parse_grammer_sequence(grammer_sequence_1, tokens, node);
-  if (success) {
-    return true;
-  }
-
-  std::vector<Node_Type> grammer_sequence_2{dataType};
-  success = parse_grammer_sequence(grammer_sequence_2, tokens, node);
-  if (success) {
-    return true;
-  }
-
-  std::vector<Node_Type> grammer_sequence_3{alignment, dataType,
+  std::vector<Node_Type> grammar_sequence_0{alignment, dataType,
                                             statementVectorType};
-  success = parse_grammer_sequence(grammer_sequence_3, tokens, node);
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
   if (success) {
     return true;
   }
 
-  std::vector<Node_Type> grammer_sequence_4{alignment, statementVectorType,
+  std::vector<Node_Type> grammar_sequence_1{alignment, statementVectorType,
                                             dataType};
-  success = parse_grammer_sequence(grammer_sequence_4, tokens, node);
+  success = parse_grammar_sequence(grammar_sequence_1, tokens, node);
   if (success) {
     return true;
   }
 
-  std::vector<Node_Type> grammer_sequence_5{dataType, alignment,
-                                            statementVectorType};
-  success = parse_grammer_sequence(grammer_sequence_5, tokens, node);
+  std::vector<Node_Type> grammar_sequence_2{dataType, statementVectorType,
+                                            alignment};
+  success = parse_grammar_sequence(grammar_sequence_2, tokens, node);
   if (success) {
     return true;
   }
 
-  std::vector<Node_Type> grammer_sequence_6{dataType, alignment,
+  std::vector<Node_Type> grammar_sequence_3{dataType, alignment,
                                             statementVectorType};
-  success = parse_grammer_sequence(grammer_sequence_6, tokens, node);
+  success = parse_grammar_sequence(grammar_sequence_3, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_4{statementVectorType, dataType,
+                                            alignment};
+  success = parse_grammar_sequence(grammar_sequence_4, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_5{statementVectorType, alignment,
+                                            dataType};
+  success = parse_grammar_sequence(grammar_sequence_5, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_6{dataType, parameterAttribute,
+                                            alignment};
+  success = parse_grammar_sequence(grammar_sequence_6, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_7{dataType, statementVectorType};
+  success = parse_grammar_sequence(grammar_sequence_7, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_8{statementVectorType, dataType};
+  success = parse_grammar_sequence(grammar_sequence_8, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_9{dataType, alignment};
+  success = parse_grammar_sequence(grammar_sequence_9, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_10{alignment, dataType};
+  success = parse_grammar_sequence(grammar_sequence_10, tokens, node);
+  if (success) {
+    return true;
+  }
+
+  std::vector<Node_Type> grammar_sequence_11{dataType};
+  success = parse_grammar_sequence(grammar_sequence_11, tokens, node);
   if (success) {
     return true;
   }
@@ -3299,9 +3357,9 @@ bool Parser::parse_statementVectorType(std::vector<Token> tokens, Node &node) {
 bool Parser::parse_alignment(std::vector<Token> tokens, Node &node) {
   bool success;
   node.set_type(alignment);
-  std::vector<Node_Type> grammer_sequence_0{TOKEN_ALIGN,
+  std::vector<Node_Type> grammar_sequence_0{TOKEN_ALIGN,
                                             TOKEN_DECIMAL_CONSTANT};
-  success = parse_grammer_sequence(grammer_sequence_0, tokens, node);
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
   if (success) {
     return true;
   }
@@ -3419,13 +3477,54 @@ bool Parser::parse_identifierList(std::vector<Token> tokens, Node &node) {
 }
 
 bool Parser::parse_arrayDimensionSet(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
+  bool success = true;
+  bool finished_1_iteration = false;
   node.set_type(arrayDimensionSet);
-  Node child_node;
+  Node temp_node;
 
-  // Not Yet Implemented
+  while (success) {
+    std::vector<Node_Type> grammar_sequence_0{
+        TOKEN_OPENBRACKET, TOKEN_DECIMAL_CONSTANT, TOKEN_CLOSEBRACKET};
+    success = parse_grammar_sequence(grammar_sequence_0, tokens, temp_node);
 
-  return false;
+    if (!success) {
+      std::vector<Node_Type> grammar_sequence_1{TOKEN_OPENBRACKET,
+                                                TOKEN_CLOSEBRACKET};
+      success = parse_grammar_sequence(grammar_sequence_1, tokens, temp_node);
+    }
+
+    if (success) {
+      finished_1_iteration = true;
+      for (Node node_ : temp_node.get_children()) {
+        node.add(node_);
+        temp_node.reset();
+      }
+    }
+  }
+
+  return finished_1_iteration;
+}
+
+bool Parser::parse_entryStatements(std::vector<Token> tokens, Node &node) {
+  bool success = true;
+  bool finished_1_iteration = false;
+  node.set_type(entryStatements);
+  Node temp_node;
+
+  while (success) {
+    std::vector<Node_Type> grammar_sequence_0{completeEntryStatement};
+    success = parse_grammar_sequence(grammar_sequence_0, tokens, temp_node);
+
+    if (success) {
+      finished_1_iteration = true;
+      for (Node node_ : temp_node.get_children()) {
+        node.add(node_);
+        temp_node.reset();
+      }
+    }
+  }
+
+  return finished_1_iteration;
 }
 
 bool Parser::parse_argumentTypeList(std::vector<Token> tokens, Node &node) {
@@ -3454,7 +3553,7 @@ bool Parser::parse_optionalVectorIndex(std::vector<Token> tokens, Node &node) {
   bool success;
 
   // std::vector<Node_Type> grammar_sequence_0 { vectorIndex };
-  // success = parse_grammer_sequence(grammar_sequence_0, tokens, node);
+  // success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
 
   return true;
 }
@@ -3542,80 +3641,115 @@ bool Parser::parse_externOrVisible(std::vector<Token> tokens, Node &node) {
     node.add(child_node);
     child_node.reset();
     advance(tokens);
-    return true;
   }
-  return false;
+  return true;
 }
 
 bool Parser::parse_preprocessor(std::vector<Token> tokens, Node &node) {
   int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
+  node.set_type(preprocessor);
   Node child_node;
 
-  // Not Yet Implemented
+  if (tokens[current_token_index].token_type == PREPROCESSOR_INCLUDE ||
+      tokens[current_token_index].token_type == PREPROCESSOR_DEFINE ||
+      tokens[current_token_index].token_type == PREPROCESSOR_IF ||
+      tokens[current_token_index].token_type == PREPROCESSOR_IFDEF ||
+      tokens[current_token_index].token_type == PREPROCESSOR_ELSE ||
+      tokens[current_token_index].token_type == PREPROCESSOR_ENDIF ||
+      tokens[current_token_index].token_type == PREPROCESSOR_LINE ||
+      tokens[current_token_index].token_type == PREPROCESSOR_FILE) {
+    child_node.set_type(leaf);
+    child_node.set_token(tokens[current_token_index]);
+    node.add(child_node);
+    child_node.reset();
+    advance(tokens);
+    return true;
+  }
 
   return false;
 }
 
 bool Parser::parse_samplerDeclaration(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(samplerDeclaration);
 
-  // Not Yet Implemented
-
+  std::vector<Node_Type> grammar_sequence_0{externOrVisible, textureSpace,
+                                            TOKEN_SAMPLEREF, identifier,
+                                            TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
   return false;
 }
 
 bool Parser::parse_surfaceDeclaration(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(surfaceDeclaration);
 
-  // Not Yet Implemented
-
+  std::vector<Node_Type> grammar_sequence_0{externOrVisible, textureSpace,
+                                            TOKEN_SURFREF, identifier,
+                                            TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
   return false;
 }
 
 bool Parser::parse_textureDeclaration(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(textureDeclaration);
 
-  // Not Yet Implemented
-
+  std::vector<Node_Type> grammar_sequence_0{
+      externOrVisible, textureSpace, TOKEN_TEXREF, identifier, TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
   return false;
 }
 
 bool Parser::parse_globalSharedDeclaration(std::vector<Token> tokens,
                                            Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(globalSharedDeclaration);
 
-  // Not Yet Implemented
-
+  std::vector<Node_Type> grammar_sequence_0{
+      externOrVisible, TOKEN_SHARED,    addressableVariablePrefix,
+      identifier,      arrayDimensions, TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
   return false;
 }
 
 bool Parser::parse_globalLocalDeclaration(std::vector<Token> tokens,
                                           Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(globalLocalDeclaration);
 
-  // Not Yet Implemented
-
+  std::vector<Node_Type> grammar_sequence_0{
+      externOrVisible, TOKEN_LOCAL,     addressableVariablePrefix,
+      identifier,      arrayDimensions, TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
   return false;
 }
 
 bool Parser::parse_addressSize(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(addressSize);
 
-  // Not Yet Implemented
-
+  std::vector<Node_Type> grammar_sequence_0{TOKEN_ADDRESS_SIZE,
+                                            TOKEN_DECIMAL_CONSTANT};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
   return false;
 }
 
@@ -3700,42 +3834,78 @@ bool Parser::parse_brev(std::vector<Token> tokens, Node &node) {
 }
 
 bool Parser::parse_branch(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(branch);
 
-  // Not Yet Implemented
+  std::vector<Node_Type> grammar_sequence_0{OPCODE_BRA, optionalUni,
+                                            branchOperand, TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
+
+  std::vector<Node_Type> grammar_sequence_1{call};
+  success = parse_grammar_sequence(grammar_sequence_1, tokens, node);
+  if (success) {
+    return true;
+  };
 
   return false;
 }
 
 bool Parser::parse_addCOrSubC(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(addCOrSubC);
 
-  // Not Yet Implemented
-
+  std::vector<Node_Type> grammar_sequence_0{
+      addOrSubOpcode, addCModifier, dataType, operand,        TOKEN_COMMA,
+      operand,        TOKEN_COMMA,  operand,  TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
   return false;
 }
 
 bool Parser::parse_atom(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(atom);
 
-  // Not Yet Implemented
+  std::vector<Node_Type> grammar_sequence_0{
+      OPCODE_ATOM,       atomModifier,  atomicOpcode,
+      dataType,          operand,       TOKEN_COMMA,
+      TOKEN_OPENBRACKET, memoryOperand, TOKEN_CLOSEBRACKET,
+      TOKEN_COMMA,       operand,       TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
+
+  std::vector<Node_Type> grammar_sequence_1{
+      OPCODE_ATOM,       atomModifier,   atomicOpcode,
+      dataType,          operand,        TOKEN_COMMA,
+      TOKEN_OPENBRACKET, memoryOperand,  TOKEN_CLOSEBRACKET,
+      TOKEN_COMMA,       operand,        TOKEN_COMMA,
+      operand,           TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_1, tokens, node);
+  if (success) {
+    return true;
+  };
 
   return false;
 }
 
 bool Parser::parse_bar(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(bar);
 
-  // Not Yet Implemented
-
+  std::vector<Node_Type> grammar_sequence_0{OPCODE_BAR, barrierOperation,
+                                            optionalBarrierOperation,
+                                            operandSequence, TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
   return false;
 }
 
@@ -3880,11 +4050,16 @@ bool Parser::parse_membar(std::vector<Token> tokens, Node &node) {
 }
 
 bool Parser::parse_mov(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  node.set_type(mov);
+  bool success;
 
-  // Not Yet Implemented
+  std::vector<Node_Type> grammar_sequence_0{OPCODE_MOV,       dataType,
+                                            arrayOperand,     TOKEN_COMMA,
+                                            movSourceOperand, TOKEN_SEMICOLON};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  }
 
   return false;
 }
@@ -4150,11 +4325,16 @@ bool Parser::parse_trap(std::vector<Token> tokens, Node &node) {
 }
 
 bool Parser::parse_fileDeclaration(std::vector<Token> tokens, Node &node) {
-  int current_token_index_placeholder = current_token_index;
-  node.set_type(optionalReturnArgument);
-  Node child_node;
+  bool success;
+  node.set_type(fileDeclaration);
 
-  // Not Yet Implemented
+  std::vector<Node_Type> grammar_sequence_0{TOKEN_FILE, TOKEN_DECIMAL_CONSTANT,
+                                            TOKEN_STRING,
+                                            optionalTimestampAndSize};
+  success = parse_grammar_sequence(grammar_sequence_0, tokens, node);
+  if (success) {
+    return true;
+  };
 
   return false;
 }
@@ -4185,6 +4365,112 @@ bool Parser::parse_shfl(std::vector<Token> tokens, Node &node) {
   Node child_node;
 
   // Not Yet Implemented
+
+  return false;
+}
+
+bool Parser::parse_decimalInitializer(std::vector<Token> tokens, Node &node) {
+  node.set_type(decimalInitializer);
+  bool success;
+
+  // Not Yet Implemented
+
+  return false;
+}
+
+bool Parser::parse_floatInitializer(std::vector<Token> tokens, Node &node) {
+  node.set_type(decimalInitializer);
+  bool success;
+
+  // Not Yet Implemented
+
+  return false;
+}
+
+bool Parser::parse_optionalReturnArgumentList(std::vector<Token> tokens,
+                                              Node &node) {
+  node.set_type(optionalReturnArgumentList);
+  bool success;
+
+  // Not Yet Implemented
+
+  return true;
+}
+
+bool Parser::parse_singleInitializer(std::vector<Token> tokens, Node &node) {
+  node.set_type(decimalInitializer);
+  bool success;
+
+  // Not Yet Implemented
+
+  return false;
+}
+
+bool Parser::parse_instruction(std::vector<Token> tokens, Node &node) {
+  node.set_type(instruction);
+  bool success;
+
+  std::vector<std::vector<Node_Type>> grammar_sequences{{ftzInstruction2},
+                                                        {ftzInstruction3},
+                                                        {approxInstruction2},
+                                                        {basicInstruction3},
+                                                        {bfe},
+                                                        {bfi},
+                                                        {bfind},
+                                                        {brev},
+                                                        {branch},
+                                                        {addOrSub},
+                                                        {addCOrSubC},
+                                                        {atom},
+                                                        {bar},
+                                                        {brkpt},
+                                                        {clz},
+                                                        {cvt},
+                                                        {cvta},
+                                                        {isspacep},
+                                                        {div},
+                                                        {exit},
+                                                        {ld},
+                                                        {ldu},
+                                                        {mad},
+                                                        {mad24},
+                                                        {madc},
+                                                        {membar},
+                                                        {mov},
+                                                        {mul24},
+                                                        {mul},
+                                                        {notInstruction},
+                                                        {pmevent},
+                                                        {popc},
+                                                        {prefetch},
+                                                        {prefetchu},
+                                                        {prmt},
+                                                        {rcpSqrtInstruction},
+                                                        {red},
+                                                        {ret},
+                                                        {sad},
+                                                        {selp},
+                                                        {set},
+                                                        {setp},
+                                                        {slct},
+                                                        {st},
+                                                        {suld},
+                                                        {suq},
+                                                        {sured},
+                                                        {sust},
+                                                        {testp},
+                                                        {tex},
+                                                        {tld4},
+                                                        {trap},
+                                                        {txq},
+                                                        {vote},
+                                                        {shfl}};
+  for (std::vector<Node_Type> grammar_sequence : grammar_sequences) {
+    success = parse_grammar_sequence(grammar_sequence, tokens, node);
+    if (success) {
+      return true;
+    }
+  }
 
   return false;
 }
